@@ -58,7 +58,7 @@ func (o *OSFS) copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer srcFile.Close()
+	defer func() { _ = srcFile.Close() }()
 
 	srcInfo, err := srcFile.Stat()
 	if err != nil {
@@ -145,7 +145,7 @@ func (o *OSFS) Trash(path string) error {
 			}
 		}
 		if !found {
-			return fmt.Errorf("ゴミ箱内で一意のパスが見つかりません: %s", name)
+			return fmt.Errorf("could not find unique path in trash: %s", name)
 		}
 	}
 

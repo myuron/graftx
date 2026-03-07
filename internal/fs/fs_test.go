@@ -200,7 +200,7 @@ func TestTrash_ゴミ箱移動(t *testing.T) {
 	}
 	trashPath := filepath.Join(home, ".Trash", "trash_me.txt")
 	t.Cleanup(func() {
-		os.Remove(trashPath)
+		_ = os.Remove(trashPath)
 	})
 
 	osFS := &OSFS{}

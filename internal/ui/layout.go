@@ -3,8 +3,10 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jroimartin/gocui"
+	"github.com/mattn/go-runewidth"
 	"github.com/myuron/graftx/internal/fs"
 	"github.com/myuron/graftx/internal/pane"
 	"github.com/myuron/graftx/internal/selector"
@@ -18,16 +20,16 @@ const (
 	ExitReasonNone ExitReason = iota
 	// ExitReasonQuit はユーザーによる終了。
 	ExitReasonQuit
-	// ExitReasonSelectRepo はリポジトリ選択のための一時終了。
-	ExitReasonSelectRepo
 )
 
 // View名の定数。
 const (
-	viewLeft   = "left"
-	viewRight  = "right"
-	viewStatus = "status"
-	viewInput  = "input"
+	viewLeft           = "left"
+	viewRight          = "right"
+	viewStatus         = "status"
+	viewInput          = "input"
+	viewSelectorFilter = "selector_filter"
+	viewSelectorList   = "selector_list"
 )
 
 // InputMode はステータスバーの入力モードを表す型。
@@ -52,26 +54,33 @@ const (
 	InputModeConfirmForceDelete
 	// InputModeConfirmPaste はペースト同名確認モード。
 	InputModeConfirmPaste
+	// InputModeSelectRepo はリポジトリ選択ポップアップモード。
+	InputModeSelectRepo
 )
 
 // App はTUIアプリケーション全体の状態を管理する構造体。
 type App struct {
-	SourcePane             *pane.Pane             // 左ペイン（コピー元）、未選択時はnil
-	DestPane               *pane.Pane             // 右ペイン（コピー先）
-	Selector               selector.CommandRunner // リポジトリ選択
-	FS                     fs.FileSystem          // ファイルシステム
-	FocusLeft              bool                   // trueなら左ペインにフォーカス
-	Status                 string                 // ステータスバーに表示するメッセージ
-	ExitReason             ExitReason             // MainLoop終了理由
-	YankBuf                *pane.YankBuffer       // ヤンクバッファ
-	gPending               bool                   // 'g'キーが押された状態
-	inputMode              InputMode              // 入力モード
-	inputBuf               string                 // 入力バッファ
-	searchQuery            string                 // 現在の検索クエリ
-	searchFwd              bool                   // 検索方向（trueなら前方）
-	gui                    *gocui.Gui             // gocuiインスタンスへの参照
-	pendingTargets         []string               // 削除確認時のターゲットパスのスナップショット
-	inputKeybindingsInited bool                   // 入力ビューのキーバインド登録済みフラグ
+	SourcePane                *pane.Pane             // 左ペイン（コピー元）、未選択時はnil
+	DestPane                  *pane.Pane             // 右ペイン（コピー先）
+	Selector                  selector.CommandRunner // リポジトリ選択
+	FS                        fs.FileSystem          // ファイルシステム
+	FocusLeft                 bool                   // trueなら左ペインにフォーカス
+	Status                    string                 // ステータスバーに表示するメッセージ
+	ExitReason                ExitReason             // MainLoop終了理由
+	YankBuf                   *pane.YankBuffer       // ヤンクバッファ
+	gPending                  bool                   // 'g'キーが押された状態
+	inputMode                 InputMode              // 入力モード
+	inputBuf                  string                 // 入力バッファ
+	searchQuery               string                 // 現在の検索クエリ
+	searchFwd                 bool                   // 検索方向（trueなら前方）
+	gui                       *gocui.Gui             // gocuiインスタンスへの参照
+	pendingTargets            []string               // 削除確認時のターゲットパスのスナップショット
+	inputKeybindingsInited    bool                   // 入力ビューのキーバインド登録済みフラグ
+	repoList                  []string               // リポジトリ一覧（全件）
+	filteredRepoList          []string               // フィルタ済みリポジトリ一覧
+	repoSelectorCursor        int                    // リポジトリ選択カーソル位置
+	repoFilterQuery           string                 // リポジトリフィルタクエリ
+	selectorKeybindingsInited bool                   // セレクタキーバインド登録済みフラグ
 }
 
 // NewApp は新しいAppを作成する。
@@ -109,8 +118,8 @@ func (a *App) SetGui(g *gocui.Gui) error {
 	a.gui = g
 	g.SetManager(a)
 	g.Highlight = true
-	g.SelBgColor = gocui.ColorGreen
-	g.SelFgColor = gocui.ColorBlack
+	g.SelFgColor = gocui.ColorGreen
+	g.SelBgColor = gocui.ColorDefault
 	g.Cursor = false
 	return a.setKeybindings(g)
 }
@@ -150,30 +159,43 @@ func (a *App) Layout(g *gocui.Gui) error {
 		v.Frame = false
 	}
 
-	// 入力モード時は入力ビューを表示
-	if a.isTextInputMode() {
-		if v, err := g.SetView(viewInput, 0, maxY-2, maxX-1, maxY); err != nil {
-			if err != gocui.ErrUnknownView {
-				return err
-			}
-			v.Frame = false
-			v.Editable = true
-		}
-		if _, err := g.SetCurrentView(viewInput); err != nil {
+	// リポジトリ選択ポップアップモード
+	if a.inputMode == InputModeSelectRepo {
+		// ポップアップモード中はペインビューのcurrentViewを設定しない
+		if err := a.renderSelectorPopup(g); err != nil {
 			return err
 		}
 	} else {
-		// 入力ビューが存在したら削除
-		g.DeleteView(viewInput)
+		// ポップアップビューが残っていれば削除
+		_ = g.DeleteView(viewSelectorFilter)
+		_ = g.DeleteView(viewSelectorList)
 
-		// フォーカス中のビューをcurrentViewに設定
-		if a.FocusLeft {
-			if _, err := g.SetCurrentView(viewLeft); err != nil {
+		// 入力モード時は入力ビューを表示
+		if a.isTextInputMode() {
+			if v, err := g.SetView(viewInput, 0, maxY-2, maxX-1, maxY); err != nil {
+				if err != gocui.ErrUnknownView {
+					return err
+				}
+				v.Frame = false
+				v.Editable = true
+				v.Editor = gocui.EditorFunc(a.inputEditor)
+			}
+			if _, err := g.SetCurrentView(viewInput); err != nil {
 				return err
 			}
 		} else {
-			if _, err := g.SetCurrentView(viewRight); err != nil {
-				return err
+			// 入力ビューが存在したら削除
+			_ = g.DeleteView(viewInput)
+
+			// フォーカス中のビューをcurrentViewに設定
+			if a.FocusLeft {
+				if _, err := g.SetCurrentView(viewLeft); err != nil {
+					return err
+				}
+			} else {
+				if _, err := g.SetCurrentView(viewRight); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -203,11 +225,26 @@ func (a *App) renderLeftPane(g *gocui.Gui) error {
 		return err
 	}
 	v.Clear()
+	// カレントペインのみハイライトを有効にする
+	v.Highlight = a.FocusLeft
 
 	if a.SourcePane == nil {
 		v.Title = " Source "
-		fmt.Fprintln(v, "")
-		fmt.Fprintln(v, "  's' キーでリポジトリを選択")
+		w, h := v.Size()
+		msg := "[s]select repository"
+		msgWidth := runewidth.StringWidth(msg)
+		padX := 0
+		if w > msgWidth {
+			padX = (w - msgWidth) / 2
+		}
+		padY := 0
+		if h > 1 {
+			padY = h / 2
+		}
+		for i := 0; i < padY; i++ {
+			_, _ = fmt.Fprintln(v, "")
+		}
+		_, _ = fmt.Fprintf(v, "%s%s\n", strings.Repeat(" ", padX), msg)
 		return nil
 	}
 
@@ -223,15 +260,37 @@ func (a *App) renderRightPane(g *gocui.Gui) error {
 		return err
 	}
 	v.Clear()
+	// カレントペインのみハイライトを有効にする
+	v.Highlight = !a.FocusLeft
 
 	v.Title = fmt.Sprintf(" %s ", a.DestPane.Dir)
 	a.renderEntries(v, a.DestPane)
 	return a.syncScroll(v, a.DestPane)
 }
 
+// highlightMatch は検索クエリにマッチする部分をANSIカラーでハイライトする。
+// 大文字小文字を無視してマッチし、最初のマッチ部分を黄色背景＋黒文字で装飾する。
+// クエリが空またはマッチなしの場合はそのまま返す。
+func highlightMatch(name, query string) string {
+	if query == "" {
+		return name
+	}
+	lower := strings.ToLower(name)
+	q := strings.ToLower(query)
+	idx := strings.Index(lower, q)
+	if idx < 0 {
+		return name
+	}
+	// 元の文字列の大文字小文字を保持してハイライト
+	return name[:idx] + "\x1b[30;43m" + name[idx:idx+len(query)] + "\x1b[0m" + name[idx+len(query):]
+}
+
 // renderEntries はペインのエントリ一覧をViewに描画する。
 // 選択済みエントリには "* " プレフィックス、ディレクトリには "/" サフィックスを付与する。
+// 各行はビュー幅いっぱいまでスペースで埋めてハイライトが横幅全体に表示されるようにする。
 func (a *App) renderEntries(v *gocui.View, p *pane.Pane) {
+	viewWidth, _ := v.Size()
+
 	for i, entry := range p.Entries {
 		prefix := "  "
 		if p.Selected[i] {
@@ -243,7 +302,24 @@ func (a *App) renderEntries(v *gocui.View, p *pane.Pane) {
 			suffix = "/"
 		}
 
-		fmt.Fprintf(v, "%s%s%s\n", prefix, entry.Name, suffix)
+		icon := iconForEntry(entry) + " "
+
+		// ANSIコードを含まない元テキストで幅を計算
+		text := prefix + icon + entry.Name + suffix
+		textWidth := runewidth.StringWidth(text)
+		pad := 0
+		if viewWidth > textWidth {
+			pad = viewWidth - textWidth
+		}
+
+		// 検索クエリがある場合はマッチ部分をハイライト
+		displayName := entry.Name
+		if a.searchQuery != "" {
+			displayName = highlightMatch(entry.Name, a.searchQuery)
+		}
+		displayText := prefix + icon + displayName + suffix
+
+		_, _ = fmt.Fprintf(v, "%s%s\n", displayText, strings.Repeat(" ", pad))
 	}
 }
 
@@ -268,6 +344,23 @@ func (a *App) syncScroll(v *gocui.View, p *pane.Pane) error {
 	return v.SetCursor(0, cy)
 }
 
+// inputPrefix は入力モードごとのプレフィックス文字列を返す。
+func (a *App) inputPrefix() string {
+	switch a.inputMode {
+	case InputModeSearch:
+		return "/:"
+	case InputModeSearchBackward:
+		return "?:"
+	case InputModeFilter:
+		return "filter: "
+	case InputModeCreate:
+		return "create new (end with / for dir): "
+	case InputModeRename:
+		return "rename: "
+	}
+	return ""
+}
+
 // isTextInputMode はテキスト入力を受け付けるモードかを返す。
 func (a *App) isTextInputMode() bool {
 	switch a.inputMode {
@@ -286,7 +379,7 @@ func (a *App) renderStatus(g *gocui.Gui) error {
 			return nil // 入力ビューがまだ作られていない場合はスキップ
 		}
 		v.Clear()
-		fmt.Fprint(v, a.Status)
+		_, _ = fmt.Fprint(v, a.inputPrefix()+a.inputBuf)
 		return nil
 	}
 
@@ -297,13 +390,13 @@ func (a *App) renderStatus(g *gocui.Gui) error {
 	v.Clear()
 
 	if a.Status != "" {
-		fmt.Fprint(v, a.Status)
+		_, _ = fmt.Fprint(v, a.Status)
 	} else {
 		focus := "right"
 		if a.FocusLeft {
 			focus = "left"
 		}
-		fmt.Fprintf(v, " [%s] q:終了 Tab:切替 h/j/k/l:移動", focus)
+		_, _ = fmt.Fprintf(v, " [%s] [q]Quit [Tab]Switch [h/j/k/l]Move", focus)
 	}
 
 	return nil
