@@ -300,6 +300,67 @@ func TestEnterDir_選択がクリアされる(t *testing.T) {
 	}
 }
 
+func TestMoveToTop_先頭にジャンプ(t *testing.T) {
+	mock := newTestFS()
+	p, _ := NewPane("/project", mock)
+
+	p.Cursor = 3
+	p.MoveToTop()
+	if p.Cursor != 0 {
+		t.Errorf("MoveToTop後 Cursor = %d, want 0", p.Cursor)
+	}
+
+	// 既に先頭にいる場合
+	p.MoveToTop()
+	if p.Cursor != 0 {
+		t.Errorf("先頭でMoveToTop後 Cursor = %d, want 0", p.Cursor)
+	}
+}
+
+func TestMoveToBottom_末尾にジャンプ(t *testing.T) {
+	mock := newTestFS()
+	p, _ := NewPane("/project", mock)
+
+	p.MoveToBottom()
+	if p.Cursor != 3 {
+		t.Errorf("MoveToBottom後 Cursor = %d, want 3", p.Cursor)
+	}
+
+	// 既に末尾にいる場合
+	p.MoveToBottom()
+	if p.Cursor != 3 {
+		t.Errorf("末尾でMoveToBottom後 Cursor = %d, want 3", p.Cursor)
+	}
+}
+
+func TestMoveToTop_空エントリ(t *testing.T) {
+	mock := &mockFS{
+		dirs: map[string][]fs.Entry{
+			"/empty": {},
+		},
+	}
+	p, _ := NewPane("/empty", mock)
+
+	p.MoveToTop()
+	if p.Cursor != 0 {
+		t.Errorf("空エントリでMoveToTop後 Cursor = %d, want 0", p.Cursor)
+	}
+}
+
+func TestMoveToBottom_空エントリ(t *testing.T) {
+	mock := &mockFS{
+		dirs: map[string][]fs.Entry{
+			"/empty": {},
+		},
+	}
+	p, _ := NewPane("/empty", mock)
+
+	p.MoveToBottom()
+	if p.Cursor != 0 {
+		t.Errorf("空エントリでMoveToBottom後 Cursor = %d, want 0", p.Cursor)
+	}
+}
+
 func TestChangeDir_ディレクトリ変更(t *testing.T) {
 	mock := newTestFS()
 	p, _ := NewPane("/project", mock)
@@ -316,5 +377,77 @@ func TestChangeDir_ディレクトリ変更(t *testing.T) {
 	}
 	if len(p.Entries) != 1 {
 		t.Errorf("Entries count = %d, want 1", len(p.Entries))
+	}
+}
+
+func TestShowHidden_隠しファイルフィルタ(t *testing.T) {
+	mock := &mockFS{
+		dirs: map[string][]fs.Entry{
+			"/home": {
+				{Name: ".config", IsDir: true},
+				{Name: ".gitignore", IsDir: false},
+				{Name: "docs", IsDir: true},
+				{Name: "README.md", IsDir: false},
+			},
+		},
+	}
+
+	// デフォルトは隠しファイル非表示
+	p, _ := NewPane("/home", mock)
+	if len(p.Entries) != 2 {
+		t.Errorf("隠しファイル非表示時 Entries count = %d, want 2", len(p.Entries))
+	}
+	if p.Entries[0].Name != "docs" {
+		t.Errorf("Entries[0].Name = %q, want %q", p.Entries[0].Name, "docs")
+	}
+
+	// 隠しファイル表示に切替
+	p.ShowHidden = true
+	if err := p.Refresh(); err != nil {
+		t.Fatalf("Refresh() error = %v", err)
+	}
+	if len(p.Entries) != 4 {
+		t.Errorf("隠しファイル表示時 Entries count = %d, want 4", len(p.Entries))
+	}
+}
+
+func TestFilterQuery_フィルタ(t *testing.T) {
+	mock := newTestFS()
+	p, _ := NewPane("/project", mock)
+
+	// ".md"でフィルタ
+	p.FilterQuery = ".md"
+	if err := p.Refresh(); err != nil {
+		t.Fatalf("Refresh() error = %v", err)
+	}
+	if len(p.Entries) != 1 {
+		t.Fatalf("フィルタ後 Entries count = %d, want 1", len(p.Entries))
+	}
+	if p.Entries[0].Name != "README.md" {
+		t.Errorf("フィルタ後 Entries[0].Name = %q, want %q", p.Entries[0].Name, "README.md")
+	}
+
+	// フィルタ解除
+	if err := p.ClearFilter(); err != nil {
+		t.Fatalf("ClearFilter() error = %v", err)
+	}
+	if len(p.Entries) != 4 {
+		t.Errorf("フィルタ解除後 Entries count = %d, want 4", len(p.Entries))
+	}
+}
+
+func TestFilterQuery_大文字小文字無視(t *testing.T) {
+	mock := newTestFS()
+	p, _ := NewPane("/project", mock)
+
+	p.FilterQuery = "readme"
+	if err := p.Refresh(); err != nil {
+		t.Fatalf("Refresh() error = %v", err)
+	}
+	if len(p.Entries) != 1 {
+		t.Fatalf("大文字小文字無視フィルタ後 Entries count = %d, want 1", len(p.Entries))
+	}
+	if p.Entries[0].Name != "README.md" {
+		t.Errorf("Entries[0].Name = %q, want %q", p.Entries[0].Name, "README.md")
 	}
 }

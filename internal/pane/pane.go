@@ -4,17 +4,20 @@ package pane
 
 import (
 	"path/filepath"
+	"strings"
 
 	"github.com/myuron/graftx/internal/fs"
 )
 
 // Pane は各ペインの状態を管理する構造体。
 type Pane struct {
-	Dir      string        // 現在のディレクトリの絶対パス
-	Entries  []fs.Entry    // 現在のディレクトリのエントリ一覧
-	Cursor   int           // カーソル位置（0始まり）
-	Selected map[int]bool  // 選択中のエントリのインデックス
-	FS       fs.FileSystem // ファイルシステム操作のインターフェース
+	Dir         string        // 現在のディレクトリの絶対パス
+	Entries     []fs.Entry    // 現在のディレクトリのエントリ一覧（フィルタ後）
+	Cursor      int           // カーソル位置（0始まり）
+	Selected    map[int]bool  // 選択中のエントリのインデックス
+	FS          fs.FileSystem // ファイルシステム操作のインターフェース
+	ShowHidden  bool          // 隠しファイルを表示するか
+	FilterQuery string        // フィルタクエリ（空なら全表示）
 }
 
 // YankBuffer はヤンクしたエントリを保持する構造体。
@@ -37,15 +40,52 @@ func NewPane(dir string, fsys fs.FileSystem) (*Pane, error) {
 }
 
 // Refresh は現在のディレクトリのエントリ一覧を再取得する。
+// ShowHiddenがfalseの場合、ドットで始まるエントリを除外する。
+// FilterQueryが設定されている場合、名前に含まれないエントリを除外する。
 func (p *Pane) Refresh() error {
 	entries, err := p.FS.ReadDir(p.Dir)
 	if err != nil {
 		return err
 	}
-	p.Entries = entries
+
+	// フィルタリング
+	filtered := make([]fs.Entry, 0, len(entries))
+	for _, e := range entries {
+		// 隠しファイルフィルタ
+		if !p.ShowHidden && strings.HasPrefix(e.Name, ".") {
+			continue
+		}
+		// クエリフィルタ
+		if p.FilterQuery != "" && !strings.Contains(strings.ToLower(e.Name), strings.ToLower(p.FilterQuery)) {
+			continue
+		}
+		filtered = append(filtered, e)
+	}
+
+	// 選択中のエントリ名を保持
+	selectedNames := make(map[string]bool)
+	for i, e := range p.Entries {
+		if p.Selected[i] {
+			selectedNames[e.Name] = true
+		}
+	}
+
+	p.Entries = filtered
+	// 選択状態を復元
 	p.Selected = make(map[int]bool)
+	for i, e := range p.Entries {
+		if selectedNames[e.Name] {
+			p.Selected[i] = true
+		}
+	}
 	p.clampCursor()
 	return nil
+}
+
+// ClearFilter はフィルタをクリアしてリフレッシュする。
+func (p *Pane) ClearFilter() error {
+	p.FilterQuery = ""
+	return p.Refresh()
 }
 
 // MoveDown はカーソルを1つ下に移動する。
@@ -60,6 +100,20 @@ func (p *Pane) MoveUp() {
 	if p.Cursor > 0 {
 		p.Cursor--
 	}
+}
+
+// MoveToTop はカーソルを先頭に移動する。
+func (p *Pane) MoveToTop() {
+	p.Cursor = 0
+}
+
+// MoveToBottom はカーソルを末尾に移動する。
+func (p *Pane) MoveToBottom() {
+	if len(p.Entries) == 0 {
+		p.Cursor = 0
+		return
+	}
+	p.Cursor = len(p.Entries) - 1
 }
 
 // EnterDir はカーソル行がディレクトリの場合、そのディレクトリに入る。
