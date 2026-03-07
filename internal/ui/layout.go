@@ -167,8 +167,8 @@ func (a *App) Layout(g *gocui.Gui) error {
 		}
 	} else {
 		// ポップアップビューが残っていれば削除
-		g.DeleteView(viewSelectorFilter)
-		g.DeleteView(viewSelectorList)
+		_ = g.DeleteView(viewSelectorFilter)
+		_ = g.DeleteView(viewSelectorList)
 
 		// 入力モード時は入力ビューを表示
 		if a.isTextInputMode() {
@@ -178,13 +178,14 @@ func (a *App) Layout(g *gocui.Gui) error {
 				}
 				v.Frame = false
 				v.Editable = true
+				v.Editor = gocui.EditorFunc(a.inputEditor)
 			}
 			if _, err := g.SetCurrentView(viewInput); err != nil {
 				return err
 			}
 		} else {
 			// 入力ビューが存在したら削除
-			g.DeleteView(viewInput)
+			_ = g.DeleteView(viewInput)
 
 			// フォーカス中のビューをcurrentViewに設定
 			if a.FocusLeft {
@@ -241,9 +242,9 @@ func (a *App) renderLeftPane(g *gocui.Gui) error {
 			padY = h / 2
 		}
 		for i := 0; i < padY; i++ {
-			fmt.Fprintln(v, "")
+			_, _ = fmt.Fprintln(v, "")
 		}
-		fmt.Fprintf(v, "%s%s\n", strings.Repeat(" ", padX), msg)
+		_, _ = fmt.Fprintf(v, "%s%s\n", strings.Repeat(" ", padX), msg)
 		return nil
 	}
 
@@ -267,6 +268,23 @@ func (a *App) renderRightPane(g *gocui.Gui) error {
 	return a.syncScroll(v, a.DestPane)
 }
 
+// highlightMatch は検索クエリにマッチする部分をANSIカラーでハイライトする。
+// 大文字小文字を無視してマッチし、最初のマッチ部分を黄色背景＋黒文字で装飾する。
+// クエリが空またはマッチなしの場合はそのまま返す。
+func highlightMatch(name, query string) string {
+	if query == "" {
+		return name
+	}
+	lower := strings.ToLower(name)
+	q := strings.ToLower(query)
+	idx := strings.Index(lower, q)
+	if idx < 0 {
+		return name
+	}
+	// 元の文字列の大文字小文字を保持してハイライト
+	return name[:idx] + "\x1b[30;43m" + name[idx:idx+len(query)] + "\x1b[0m" + name[idx+len(query):]
+}
+
 // renderEntries はペインのエントリ一覧をViewに描画する。
 // 選択済みエントリには "* " プレフィックス、ディレクトリには "/" サフィックスを付与する。
 // 各行はビュー幅いっぱいまでスペースで埋めてハイライトが横幅全体に表示されるようにする。
@@ -284,13 +302,24 @@ func (a *App) renderEntries(v *gocui.View, p *pane.Pane) {
 			suffix = "/"
 		}
 
-		text := prefix + entry.Name + suffix
+		icon := iconForEntry(entry) + " "
+
+		// ANSIコードを含まない元テキストで幅を計算
+		text := prefix + icon + entry.Name + suffix
 		textWidth := runewidth.StringWidth(text)
 		pad := 0
 		if viewWidth > textWidth {
 			pad = viewWidth - textWidth
 		}
-		fmt.Fprintf(v, "%s%s\n", text, strings.Repeat(" ", pad))
+
+		// 検索クエリがある場合はマッチ部分をハイライト
+		displayName := entry.Name
+		if a.searchQuery != "" {
+			displayName = highlightMatch(entry.Name, a.searchQuery)
+		}
+		displayText := prefix + icon + displayName + suffix
+
+		_, _ = fmt.Fprintf(v, "%s%s\n", displayText, strings.Repeat(" ", pad))
 	}
 }
 
@@ -315,6 +344,23 @@ func (a *App) syncScroll(v *gocui.View, p *pane.Pane) error {
 	return v.SetCursor(0, cy)
 }
 
+// inputPrefix は入力モードごとのプレフィックス文字列を返す。
+func (a *App) inputPrefix() string {
+	switch a.inputMode {
+	case InputModeSearch:
+		return "/:"
+	case InputModeSearchBackward:
+		return "?:"
+	case InputModeFilter:
+		return "filter: "
+	case InputModeCreate:
+		return "create new (end with / for dir): "
+	case InputModeRename:
+		return "rename: "
+	}
+	return ""
+}
+
 // isTextInputMode はテキスト入力を受け付けるモードかを返す。
 func (a *App) isTextInputMode() bool {
 	switch a.inputMode {
@@ -333,7 +379,7 @@ func (a *App) renderStatus(g *gocui.Gui) error {
 			return nil // 入力ビューがまだ作られていない場合はスキップ
 		}
 		v.Clear()
-		fmt.Fprint(v, a.Status)
+		_, _ = fmt.Fprint(v, a.inputPrefix()+a.inputBuf)
 		return nil
 	}
 
@@ -344,13 +390,13 @@ func (a *App) renderStatus(g *gocui.Gui) error {
 	v.Clear()
 
 	if a.Status != "" {
-		fmt.Fprint(v, a.Status)
+		_, _ = fmt.Fprint(v, a.Status)
 	} else {
 		focus := "right"
 		if a.FocusLeft {
 			focus = "left"
 		}
-		fmt.Fprintf(v, " [%s] [q]Quit [Tab]Switch [h/j/k/l]Move", focus)
+		_, _ = fmt.Fprintf(v, " [%s] [q]Quit [Tab]Switch [h/j/k/l]Move", focus)
 	}
 
 	return nil

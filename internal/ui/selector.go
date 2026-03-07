@@ -47,7 +47,7 @@ func (a *App) selectorMoveCursorUp() {
 func (a *App) openRepoSelector(g *gocui.Gui, v *gocui.View) error {
 	repos, err := a.Selector.ListRepositories()
 	if err != nil {
-		a.Status = fmt.Sprintf("リポジトリ一覧取得エラー: %v", err)
+		a.Status = fmt.Sprintf("failed to list repositories: %v", err)
 		return nil
 	}
 
@@ -68,8 +68,8 @@ func (a *App) closeRepoSelector(g *gocui.Gui) {
 	a.repoSelectorCursor = 0
 	a.repoFilterQuery = ""
 
-	g.DeleteView(viewSelectorFilter)
-	g.DeleteView(viewSelectorList)
+	_ = g.DeleteView(viewSelectorFilter)
+	_ = g.DeleteView(viewSelectorList)
 	g.DeleteKeybindings(viewSelectorFilter)
 	g.DeleteKeybindings(viewSelectorList)
 	a.selectorKeybindingsInited = false
@@ -85,7 +85,7 @@ func (a *App) selectorConfirm(g *gocui.Gui, v *gocui.View) error {
 	a.closeRepoSelector(g)
 
 	if err := a.SetSourceDir(selected); err != nil {
-		a.Status = fmt.Sprintf("ソースディレクトリ設定エラー: %v", err)
+		a.Status = fmt.Sprintf("failed to set source directory: %v", err)
 		return nil
 	}
 
@@ -144,6 +144,9 @@ func (a *App) setupSelectorKeybindings(g *gocui.Gui) error {
 		return err
 	}
 	if err := g.SetKeybinding(viewSelectorFilter, gocui.KeyEsc, gocui.ModNone, a.selectorCancel); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding(viewSelectorFilter, gocui.KeyCtrlC, gocui.ModNone, a.selectorCancel); err != nil {
 		return err
 	}
 	if err := g.SetKeybinding(viewSelectorFilter, gocui.KeyCtrlJ, gocui.ModNone, a.selectorCursorDown); err != nil {
@@ -216,7 +219,7 @@ func (a *App) renderSelectorPopup(g *gocui.Gui) error {
 		return err
 	}
 	filterView.Clear()
-	fmt.Fprint(filterView, a.repoFilterQuery)
+	_, _ = fmt.Fprint(filterView, a.repoFilterQuery)
 
 	// リストビューの内容更新
 	listView, err := g.View(viewSelectorList)
@@ -225,7 +228,7 @@ func (a *App) renderSelectorPopup(g *gocui.Gui) error {
 	}
 	listView.Clear()
 	for _, repo := range a.filteredRepoList {
-		fmt.Fprintln(listView, repo)
+		_, _ = fmt.Fprintln(listView, repo)
 	}
 
 	// リストビューのカーソル同期
