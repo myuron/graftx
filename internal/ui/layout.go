@@ -224,6 +224,8 @@ func (a *App) renderLeftPane(g *gocui.Gui) error {
 		return err
 	}
 	v.Clear()
+	// カレントペインのみハイライトを有効にする
+	v.Highlight = a.FocusLeft
 
 	if a.SourcePane == nil {
 		v.Title = " Source "
@@ -257,6 +259,8 @@ func (a *App) renderRightPane(g *gocui.Gui) error {
 		return err
 	}
 	v.Clear()
+	// カレントペインのみハイライトを有効にする
+	v.Highlight = !a.FocusLeft
 
 	v.Title = fmt.Sprintf(" %s ", a.DestPane.Dir)
 	a.renderEntries(v, a.DestPane)
