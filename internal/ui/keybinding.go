@@ -189,11 +189,10 @@ func (a *App) toggleFocus(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
-// selectRepo はリポジトリ選択のためにMainLoopを一時終了する。
+// selectRepo はリポジトリ選択ポップアップを開く。
 func (a *App) selectRepo(g *gocui.Gui, v *gocui.View) error {
 	a.resetGPending()
-	a.ExitReason = ExitReasonSelectRepo
-	return gocui.ErrQuit
+	return a.openRepoSelector(g, v)
 }
 
 // quit はアプリケーションを終了する。

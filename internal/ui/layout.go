@@ -20,16 +20,16 @@ const (
 	ExitReasonNone ExitReason = iota
 	// ExitReasonQuit はユーザーによる終了。
 	ExitReasonQuit
-	// ExitReasonSelectRepo はリポジトリ選択のための一時終了。
-	ExitReasonSelectRepo
 )
 
 // View名の定数。
 const (
-	viewLeft   = "left"
-	viewRight  = "right"
-	viewStatus = "status"
-	viewInput  = "input"
+	viewLeft           = "left"
+	viewRight          = "right"
+	viewStatus         = "status"
+	viewInput          = "input"
+	viewSelectorFilter = "selector_filter"
+	viewSelectorList   = "selector_list"
 )
 
 // InputMode はステータスバーの入力モードを表す型。
@@ -54,26 +54,33 @@ const (
 	InputModeConfirmForceDelete
 	// InputModeConfirmPaste はペースト同名確認モード。
 	InputModeConfirmPaste
+	// InputModeSelectRepo はリポジトリ選択ポップアップモード。
+	InputModeSelectRepo
 )
 
 // App はTUIアプリケーション全体の状態を管理する構造体。
 type App struct {
-	SourcePane             *pane.Pane             // 左ペイン（コピー元）、未選択時はnil
-	DestPane               *pane.Pane             // 右ペイン（コピー先）
-	Selector               selector.CommandRunner // リポジトリ選択
-	FS                     fs.FileSystem          // ファイルシステム
-	FocusLeft              bool                   // trueなら左ペインにフォーカス
-	Status                 string                 // ステータスバーに表示するメッセージ
-	ExitReason             ExitReason             // MainLoop終了理由
-	YankBuf                *pane.YankBuffer       // ヤンクバッファ
-	gPending               bool                   // 'g'キーが押された状態
-	inputMode              InputMode              // 入力モード
-	inputBuf               string                 // 入力バッファ
-	searchQuery            string                 // 現在の検索クエリ
-	searchFwd              bool                   // 検索方向（trueなら前方）
-	gui                    *gocui.Gui             // gocuiインスタンスへの参照
-	pendingTargets         []string               // 削除確認時のターゲットパスのスナップショット
-	inputKeybindingsInited bool                   // 入力ビューのキーバインド登録済みフラグ
+	SourcePane                *pane.Pane             // 左ペイン（コピー元）、未選択時はnil
+	DestPane                  *pane.Pane             // 右ペイン（コピー先）
+	Selector                  selector.CommandRunner // リポジトリ選択
+	FS                        fs.FileSystem          // ファイルシステム
+	FocusLeft                 bool                   // trueなら左ペインにフォーカス
+	Status                    string                 // ステータスバーに表示するメッセージ
+	ExitReason                ExitReason             // MainLoop終了理由
+	YankBuf                   *pane.YankBuffer       // ヤンクバッファ
+	gPending                  bool                   // 'g'キーが押された状態
+	inputMode                 InputMode              // 入力モード
+	inputBuf                  string                 // 入力バッファ
+	searchQuery               string                 // 現在の検索クエリ
+	searchFwd                 bool                   // 検索方向（trueなら前方）
+	gui                       *gocui.Gui             // gocuiインスタンスへの参照
+	pendingTargets            []string               // 削除確認時のターゲットパスのスナップショット
+	inputKeybindingsInited    bool                   // 入力ビューのキーバインド登録済みフラグ
+	repoList                  []string               // リポジトリ一覧（全件）
+	filteredRepoList          []string               // フィルタ済みリポジトリ一覧
+	repoSelectorCursor        int                    // リポジトリ選択カーソル位置
+	repoFilterQuery           string                 // リポジトリフィルタクエリ
+	selectorKeybindingsInited bool                   // セレクタキーバインド登録済みフラグ
 }
 
 // NewApp は新しいAppを作成する。
@@ -152,30 +159,42 @@ func (a *App) Layout(g *gocui.Gui) error {
 		v.Frame = false
 	}
 
-	// 入力モード時は入力ビューを表示
-	if a.isTextInputMode() {
-		if v, err := g.SetView(viewInput, 0, maxY-2, maxX-1, maxY); err != nil {
-			if err != gocui.ErrUnknownView {
-				return err
-			}
-			v.Frame = false
-			v.Editable = true
-		}
-		if _, err := g.SetCurrentView(viewInput); err != nil {
+	// リポジトリ選択ポップアップモード
+	if a.inputMode == InputModeSelectRepo {
+		// ポップアップモード中はペインビューのcurrentViewを設定しない
+		if err := a.renderSelectorPopup(g); err != nil {
 			return err
 		}
 	} else {
-		// 入力ビューが存在したら削除
-		g.DeleteView(viewInput)
+		// ポップアップビューが残っていれば削除
+		g.DeleteView(viewSelectorFilter)
+		g.DeleteView(viewSelectorList)
 
-		// フォーカス中のビューをcurrentViewに設定
-		if a.FocusLeft {
-			if _, err := g.SetCurrentView(viewLeft); err != nil {
+		// 入力モード時は入力ビューを表示
+		if a.isTextInputMode() {
+			if v, err := g.SetView(viewInput, 0, maxY-2, maxX-1, maxY); err != nil {
+				if err != gocui.ErrUnknownView {
+					return err
+				}
+				v.Frame = false
+				v.Editable = true
+			}
+			if _, err := g.SetCurrentView(viewInput); err != nil {
 				return err
 			}
 		} else {
-			if _, err := g.SetCurrentView(viewRight); err != nil {
-				return err
+			// 入力ビューが存在したら削除
+			g.DeleteView(viewInput)
+
+			// フォーカス中のビューをcurrentViewに設定
+			if a.FocusLeft {
+				if _, err := g.SetCurrentView(viewLeft); err != nil {
+					return err
+				}
+			} else {
+				if _, err := g.SetCurrentView(viewRight); err != nil {
+					return err
+				}
 			}
 		}
 	}

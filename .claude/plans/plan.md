@@ -1,45 +1,12 @@
-# graftx 未実装機能 ToDo
+# リポジトリ選択ポップアップオーバーレイ実装
 
-## ナビゲーション
-- [x] `gg` — 先頭にジャンプ
-- [x] `G` — 末尾にジャンプ
+## タスク一覧
 
-## ファイル選択
-- [x] `Space` — カーソル行の選択トグル
-- [ ] `v` — ビジュアルモード（範囲選択）
-- [x] `Ctrl+a` — 全選択
-- [x] `Ctrl+r` — 選択状態を反転
-- [x] `Esc` — 選択を全解除
-
-## ファイル操作（ヤンク・ペースト）
-- [x] `YankBuffer` 構造体の実装（`internal/pane`）
-- [x] `y` — ヤンク（選択中 or カーソル行をヤンクバッファに格納）
-- [x] `p` — ペースト（ヤンクバッファをもう一方のペインにコピー）
-- [x] `P` — 上書きペースト（同名ファイル強制上書き）
-- [x] 同名ファイル存在時の確認ダイアログ（ポップアップ）
-
-## ファイル操作（削除・作成・リネーム）
-- [x] `d` — ゴミ箱移動（`~/.Trash`）
-- [x] `D` — 完全削除（`os.RemoveAll`）
-- [x] `a` — 新規作成（末尾`/`でディレクトリ、それ以外はファイル）
-- [x] `r` — リネーム（ポップアップ入力）
-- [x] 削除確認ダイアログ（ポップアップ）
-
-## FileSystem インターフェース追加実装（`internal/fs`）
-- [x] `Copy(src, dst string) error`
-- [x] `Remove(path string) error`
-- [x] `Trash(path string) error`
-- [x] `Rename(oldPath, newPath string) error`
-- [x] `Create(path string, isDir bool) error`
-
-## 検索・フィルタ
-- [x] `/` — 前方検索（ステータスバーにプロンプト表示）
-- [ ] `?` — 後方検索
-- [x] `n` — 次の一致へ移動
-- [x] `N` — 前の一致へ移動
-- [x] `f` — フィルタ（一致しないエントリを非表示）
-
-## その他
-- [x] `.` — 隠しファイルの表示/非表示トグル
-- [x] ステータスバーへの操作フィードバック表示
-- [x] 親ディレクトリ復帰時のカーソル復元
+- [x] Step 1: `CommandRunner`インターフェース拡張 (`ListRepositories`)
+- [x] Step 2: App構造体・定数の追加 (`layout.go`)
+- [x] Step 3: ポップアップロジック (`internal/ui/selector.go` 新規作成)
+- [x] Step 4: Layout()にポップアップ描画追加 (`layout.go`)
+- [x] Step 5: `selectRepo`ハンドラ変更 (`keybinding.go`)
+- [x] Step 6: `main.go`簡素化
+- [x] Step 7: 不要コード削除
+- [x] Step 8: フォーマッター・リンター・テスト実行
