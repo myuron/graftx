@@ -1,8 +1,10 @@
 # graftx
 
-リポジトリ間のファイルコピーを加速させるTUIファイルマネージャです。
+A TUI file manager that accelerates file copying between repositories.
 
-左右2ペイン構成で、コピー元（Source）とコピー先（Dest）を同時に表示し、Vimライクなキーバインドでキーボードだけで素早くファイル操作を完結できます。
+[日本語版 README](README_ja.md)
+
+With a dual-pane layout displaying Source and Destination side by side, you can quickly perform file operations using only the keyboard with Vim-like keybindings.
 
 ```
 ┌─── Source ──────────┬─── Dest ────────────┐
@@ -14,115 +16,114 @@
  [left] [q]Quit [Tab]Switch [h/j/k/l]Move
 ```
 
-## 必要環境
+## Requirements
 
-- Go 1.21 以上
-- [ghq](https://github.com/x-motemen/ghq) — リポジトリ一覧の取得に使用
+- Go 1.21 or later
+- [ghq](https://github.com/x-motemen/ghq) — Used to list repositories
 
-## インストール
+## Installation
 
 ```bash
 go install github.com/myuron/graftx@latest
 ```
 
-## 起動
+## Getting Started
 
 ```bash
-# カレントディレクトリを右ペイン（コピー先）として起動
+# Launch with the current directory as the right pane (Destination)
 graftx
 ```
 
-起動すると右ペインにカレントディレクトリの内容が表示されます。左ペイン（コピー元）は `s` キーでリポジトリを選択すると表示されます。
+On launch, the right pane displays the contents of the current directory. Press `s` to select a source repository, which will be shown in the left pane.
 
-## フォント
+## Fonts
 
-ファイルツリーのアイコン表示に [Nerd Fonts](https://www.nerdfonts.com/) に対応しています。
-Nerd Fonts をインストールしたターミナルで使用すると、ファイルの種類に応じたアイコンが表示されます。
+File tree icons are supported via [Nerd Fonts](https://www.nerdfonts.com/). When using a terminal with Nerd Fonts installed, file-type-specific icons are displayed.
 
-> Nerd Fonts が未インストールの環境でも動作しますが、アイコン部分が正しく表示されない場合があります。
+> The application works without Nerd Fonts, but icons may not render correctly.
 
-## キーバインド
+## Keybindings
 
-### ナビゲーション
+### Navigation
 
-| キー | 操作 |
-|------|------|
-| `j` | カーソルを下に移動 |
-| `k` | カーソルを上に移動 |
-| `l` | ディレクトリに入る |
-| `h` | 親ディレクトリに戻る |
-| `gg` | 先頭にジャンプ |
-| `G` | 末尾にジャンプ |
-| `Tab` | 左右ペインのフォーカス切り替え |
+| Key | Action |
+|-----|--------|
+| `j` | Move cursor down |
+| `k` | Move cursor up |
+| `l` | Enter directory |
+| `h` | Go to parent directory |
+| `gg` | Jump to top |
+| `G` | Jump to bottom |
+| `Tab` | Switch focus between left and right panes |
 
-### ファイル選択
+### File Selection
 
-| キー | 操作 |
-|------|------|
-| `Space` | カーソル行の選択をトグル（選択後カーソルが1つ下に移動） |
-| `Ctrl+a` | 全エントリを選択 |
-| `Ctrl+r` | 選択を反転 |
-| `Esc` | 選択解除 / フィルタ解除 |
+| Key | Action |
+|-----|--------|
+| `Space` | Toggle selection on cursor line (cursor moves down after selection) |
+| `Ctrl+a` | Select all entries |
+| `Ctrl+r` | Invert selection |
+| `Esc` / `Ctrl+c` | Clear selection / Clear filter |
 
-### コピー（ヤンク & ペースト）
+### Copy (Yank & Paste)
 
-| キー | 操作 |
-|------|------|
-| `y` | 選択中のエントリをヤンク（未選択ならカーソル行）。同じペインで再度 `y` を押すとヤンク取り消し |
-| `p` | ヤンクしたエントリをフォーカス中のペインにコピー（同名ファイルはスキップ） |
-| `P` | ヤンクしたエントリを上書きコピー |
+| Key | Action |
+|-----|--------|
+| `y` | Yank selected entries (or cursor line if none selected). Press `y` again in the same pane to cancel yank |
+| `p` | Paste yanked entries to the focused pane (skip existing files) |
+| `P` | Paste yanked entries with overwrite |
 
-### ファイル操作
+### File Operations
 
-| キー | 操作 |
-|------|------|
-| `a` | 新規ファイル/ディレクトリ作成（末尾に `/` を付けるとディレクトリ） |
-| `r` | リネーム |
-| `d` | ゴミ箱に移動（確認あり: `y`/`n`） |
-| `D` | 完全削除（確認あり: `y`/`n`） |
+| Key | Action |
+|-----|--------|
+| `a` | Create new file/directory (append `/` for directory) |
+| `r` | Rename |
+| `d` | Move to trash (confirmation: `y`/`n`) |
+| `D` | Delete permanently (confirmation: `y`/`n`) |
 
-### 検索 & フィルタ
+### Search & Filter
 
-| キー | 操作 |
-|------|------|
-| `/` | 前方検索モード（入力後 Enter で確定） |
-| `n` | 次の検索結果に移動 |
-| `N` | 前の検索結果に移動 |
-| `f` | フィルタモード（入力した文字列を含むエントリのみ表示） |
-| `Esc` | フィルタ解除 |
+| Key | Action |
+|-----|--------|
+| `/` | Forward search mode (press Enter to confirm, matches are highlighted) |
+| `n` | Jump to next search result |
+| `N` | Jump to previous search result |
+| `f` | Filter mode (show only entries containing the input string) |
+| `Esc` / `Ctrl+c` | Clear filter |
 
-### リポジトリ選択
+### Repository Selection
 
-| キー | 操作 |
-|------|------|
-| `s` | リポジトリ選択ポップアップを開く（ghq管理下のリポジトリ一覧を表示） |
+| Key | Action |
+|-----|--------|
+| `s` | Open repository selection popup (lists repositories managed by ghq) |
 
-ポップアップ内では以下のキーで操作します:
+Keys available in the popup:
 
-| キー | 操作 |
-|------|------|
-| 文字入力 | フィルタ（インクリメンタルサーチ） |
-| `Ctrl+j` / `Ctrl+n` | カーソルを下に移動 |
-| `Ctrl+k` / `Ctrl+p` | カーソルを上に移動 |
-| `Enter` | 選択確定 |
-| `Esc` | キャンセル |
+| Key | Action |
+|-----|--------|
+| Type characters | Filter (incremental search) |
+| `Ctrl+j` / `Ctrl+n` | Move cursor down |
+| `Ctrl+k` / `Ctrl+p` | Move cursor up |
+| `Enter` | Confirm selection |
+| `Esc` / `Ctrl+c` | Cancel |
 
-### その他
+### Other
 
-| キー | 操作 |
-|------|------|
-| `.` | 隠しファイルの表示/非表示を切り替え |
-| `q` | 終了 |
+| Key | Action |
+|-----|--------|
+| `.` | Toggle hidden files visibility |
+| `q` | Quit |
 
-## 基本的な使い方
+## Basic Usage
 
-1. `graftx` を起動する（コピー先にしたいディレクトリで実行）
-2. `s` を押してコピー元リポジトリを選択する
-3. 左ペインで `h`/`j`/`k`/`l` を使いコピーしたいファイルに移動
-4. `Space` で選択（複数可）し、`y` でヤンク
-5. `Tab` で右ペインに移動し、コピー先ディレクトリに移動
-6. `p` でペースト
+1. Run `graftx` (in the directory you want as the copy destination)
+2. Press `s` to select the source repository
+3. Navigate to the files you want to copy using `h`/`j`/`k`/`l` in the left pane
+4. Select with `Space` (multiple selections allowed), then `y` to yank
+5. Press `Tab` to switch to the right pane and navigate to the destination directory
+6. Press `p` to paste
 
-## ライセンス
+## License
 
 MIT
