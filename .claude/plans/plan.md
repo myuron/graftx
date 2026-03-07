@@ -1,9 +1,9 @@
-# 選択カーソルの色をカレントペインのみに適用
+# コピー完了後にコピー元の*マークを消す
 
-## タスク一覧
+## 問題
+- `paste`/`pasteOverwrite`後、コピー元ペインの`Selected`がクリアされず`*`が残る
 
-- [x] Step 1: 現状把握 - layout.goの構造確認
-- [x] Step 2: テスト作成 - カレントペインのみHighlightがtrueになることを検証
-- [x] Step 3: 実装 - Layout内でフォーカス状態に応じてHighlightを切り替え
-- [x] Step 4: フォーマッター・リンター実行
-- [x] Step 5: テスト実行・確認
+## 修正箇所
+- [ ] `keybinding.go`: `clearYankSourceSelection`ヘルパーメソッド追加
+- [ ] `keybinding.go`: `paste`関数でコピー成功後にヘルパーを呼ぶ
+- [ ] `keybinding.go`: `pasteOverwrite`関数でコピー成功後にヘルパーを呼ぶ

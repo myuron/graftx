@@ -351,6 +351,9 @@ func (a *App) paste(g *gocui.Gui, v *gocui.View) error {
 		return nil
 	}
 
+	// コピー元ペインの選択状態をクリア（*マークを消す）
+	a.clearYankSourceSelection()
+
 	if skipped > 0 {
 		a.Status = fmt.Sprintf("%d copied, %d skipped (duplicate)", copied, skipped)
 	} else {
@@ -386,6 +389,9 @@ func (a *App) pasteOverwrite(g *gocui.Gui, v *gocui.View) error {
 		a.Status = fmt.Sprintf("refresh error: %v", err)
 		return nil
 	}
+
+	// コピー元ペインの選択状態をクリア（*マークを消す）
+	a.clearYankSourceSelection()
 
 	a.Status = fmt.Sprintf("%d item(s) overwritten", len(a.YankBuf.Entries))
 	return nil
@@ -781,6 +787,19 @@ func (a *App) getTargetPaths(p *pane.Pane) []string {
 		return nil
 	}
 	return []string{filepath.Join(p.Dir, p.Entries[p.Cursor].Name)}
+}
+
+// clearYankSourceSelection はヤンク元ペインの選択状態をクリアする。
+func (a *App) clearYankSourceSelection() {
+	if a.YankBuf == nil {
+		return
+	}
+	if a.SourcePane != nil && a.SourcePane.Dir == a.YankBuf.SrcDir {
+		a.SourcePane.ClearSelection()
+	}
+	if a.DestPane != nil && a.DestPane.Dir == a.YankBuf.SrcDir {
+		a.DestPane.ClearSelection()
+	}
 }
 
 // doSearch はペイン内で検索を実行する。
