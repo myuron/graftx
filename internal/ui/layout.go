@@ -350,7 +350,7 @@ func (a *App) renderStatus(g *gocui.Gui) error {
 		if a.FocusLeft {
 			focus = "left"
 		}
-		fmt.Fprintf(v, " [%s] q:終了 Tab:切替 h/j/k/l:移動", focus)
+		fmt.Fprintf(v, " [%s] [q]Quit [Tab]Switch [h/j/k/l]Move", focus)
 	}
 
 	return nil
