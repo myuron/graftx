@@ -303,6 +303,10 @@ func (a *App) yank(g *gocui.Gui, v *gocui.View) error {
 	if p == nil {
 		return nil
 	}
+	// 選択なしの場合はカーソル行を選択してからヤンク（*マーク表示のため）
+	if len(p.Selected) == 0 && len(p.Entries) > 0 {
+		p.Selected[p.Cursor] = true
+	}
 	a.YankBuf = p.Yank()
 	a.Status = fmt.Sprintf("%d件ヤンク", len(a.YankBuf.Entries))
 	return nil
