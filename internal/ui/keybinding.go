@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -333,15 +334,8 @@ func (a *App) paste(g *gocui.Gui, v *gocui.View) error {
 		name := filepath.Base(src)
 		dstPath := filepath.Join(dst.Dir, name)
 
-		// 同名ファイルの存在チェック
-		exists := false
-		for _, e := range dst.Entries {
-			if e.Name == name {
-				exists = true
-				break
-			}
-		}
-		if exists {
+		// ファイルシステムレベルで同名ファイルの存在チェック
+		if _, err := os.Stat(dstPath); err == nil {
 			skipped++
 			continue
 		}
@@ -406,9 +400,9 @@ func (a *App) trashFile(g *gocui.Gui, v *gocui.View) error {
 		return nil
 	}
 
-	targets := a.getTargetPaths(p)
+	a.pendingTargets = a.getTargetPaths(p)
 	a.inputMode = InputModeConfirmDelete
-	a.Status = fmt.Sprintf("ゴミ箱に移動しますか？ (%d件) [y/n]", len(targets))
+	a.Status = fmt.Sprintf("ゴミ箱に移動しますか？ (%d件) [y/n]", len(a.pendingTargets))
 	return nil
 }
 
@@ -420,9 +414,9 @@ func (a *App) deleteFile(g *gocui.Gui, v *gocui.View) error {
 		return nil
 	}
 
-	targets := a.getTargetPaths(p)
+	a.pendingTargets = a.getTargetPaths(p)
 	a.inputMode = InputModeConfirmForceDelete
-	a.Status = fmt.Sprintf("完全削除しますか？ (%d件) [y/n]", len(targets))
+	a.Status = fmt.Sprintf("完全削除しますか？ (%d件) [y/n]", len(a.pendingTargets))
 	return nil
 }
 
@@ -431,13 +425,15 @@ func (a *App) executeConfirm(g *gocui.Gui) error {
 	p := a.focusedPane()
 	if p == nil {
 		a.inputMode = InputModeNone
+		a.pendingTargets = nil
 		a.Status = ""
 		return nil
 	}
 
-	targets := a.getTargetPaths(p)
+	targets := a.pendingTargets
 	mode := a.inputMode
 	a.inputMode = InputModeNone
+	a.pendingTargets = nil
 
 	var lastErr error
 	count := 0
@@ -513,6 +509,7 @@ func (a *App) searchNext(g *gocui.Gui, v *gocui.View) error {
 	// 確認モード中の'n'入力を処理（キャンセル）
 	if a.inputMode == InputModeConfirmDelete || a.inputMode == InputModeConfirmForceDelete {
 		a.inputMode = InputModeNone
+		a.pendingTargets = nil
 		a.Status = "キャンセル"
 		return nil
 	}
@@ -574,6 +571,10 @@ func (a *App) toggleHidden(g *gocui.Gui, v *gocui.View) error {
 
 // setupInputKeybindings は入力ビュー用のキーバインドを登録する。
 func (a *App) setupInputKeybindings(g *gocui.Gui) error {
+	if a.inputKeybindingsInited {
+		return nil
+	}
+	a.inputKeybindingsInited = true
 	// Enter: 入力確定
 	if err := g.SetKeybinding(viewInput, gocui.KeyEnter, gocui.ModNone, a.inputSubmit); err != nil {
 		return err
@@ -604,6 +605,7 @@ func (a *App) inputSubmit(g *gocui.Gui, v *gocui.View) error {
 	a.inputMode = InputModeNone
 	a.inputBuf = ""
 	g.DeleteKeybindings(viewInput)
+	a.inputKeybindingsInited = false
 
 	switch mode {
 	case InputModeSearch, InputModeSearchBackward:
@@ -651,6 +653,7 @@ func (a *App) inputCancel(g *gocui.Gui, v *gocui.View) error {
 	a.inputBuf = ""
 	a.Status = ""
 	g.DeleteKeybindings(viewInput)
+	a.inputKeybindingsInited = false
 	return nil
 }
 
@@ -676,6 +679,13 @@ func (a *App) executeCreate(name string) error {
 	isDir := strings.HasSuffix(name, "/")
 	if isDir {
 		name = strings.TrimSuffix(name, "/")
+	}
+
+	// パストラバーサル防止: ベース名のみ許可
+	base := filepath.Base(name)
+	if base != name || base == "." || base == ".." {
+		a.Status = "無効なファイル名です"
+		return nil
 	}
 
 	path := filepath.Join(p.Dir, name)
@@ -723,6 +733,13 @@ func (a *App) executeRename(newName string) error {
 		return nil
 	}
 
+	// パストラバーサル防止: ベース名のみ許可
+	base := filepath.Base(newName)
+	if base != newName || base == "." || base == ".." {
+		a.Status = "無効なファイル名です"
+		return nil
+	}
+
 	oldPath := filepath.Join(p.Dir, oldName)
 	newPath := filepath.Join(p.Dir, newName)
 	if err := a.FS.Rename(oldPath, newPath); err != nil {
@@ -749,6 +766,9 @@ func (a *App) executeRename(newName string) error {
 
 // getTargetPaths は選択中またはカーソル行のエントリのフルパス一覧を返す。
 func (a *App) getTargetPaths(p *pane.Pane) []string {
+	if len(p.Entries) == 0 {
+		return nil
+	}
 	if len(p.Selected) > 0 {
 		var paths []string
 		for i := range p.Entries {
@@ -757,6 +777,9 @@ func (a *App) getTargetPaths(p *pane.Pane) []string {
 			}
 		}
 		return paths
+	}
+	if p.Cursor < 0 || p.Cursor >= len(p.Entries) {
+		return nil
 	}
 	return []string{filepath.Join(p.Dir, p.Entries[p.Cursor].Name)}
 }

@@ -56,20 +56,22 @@ const (
 
 // App はTUIアプリケーション全体の状態を管理する構造体。
 type App struct {
-	SourcePane  *pane.Pane             // 左ペイン（コピー元）、未選択時はnil
-	DestPane    *pane.Pane             // 右ペイン（コピー先）
-	Selector    selector.CommandRunner // リポジトリ選択
-	FS          fs.FileSystem          // ファイルシステム
-	FocusLeft   bool                   // trueなら左ペインにフォーカス
-	Status      string                 // ステータスバーに表示するメッセージ
-	ExitReason  ExitReason             // MainLoop終了理由
-	YankBuf     *pane.YankBuffer       // ヤンクバッファ
-	gPending    bool                   // 'g'キーが押された状態
-	inputMode   InputMode              // 入力モード
-	inputBuf    string                 // 入力バッファ
-	searchQuery string                 // 現在の検索クエリ
-	searchFwd   bool                   // 検索方向（trueなら前方）
-	gui         *gocui.Gui             // gocuiインスタンスへの参照
+	SourcePane             *pane.Pane             // 左ペイン（コピー元）、未選択時はnil
+	DestPane               *pane.Pane             // 右ペイン（コピー先）
+	Selector               selector.CommandRunner // リポジトリ選択
+	FS                     fs.FileSystem          // ファイルシステム
+	FocusLeft              bool                   // trueなら左ペインにフォーカス
+	Status                 string                 // ステータスバーに表示するメッセージ
+	ExitReason             ExitReason             // MainLoop終了理由
+	YankBuf                *pane.YankBuffer       // ヤンクバッファ
+	gPending               bool                   // 'g'キーが押された状態
+	inputMode              InputMode              // 入力モード
+	inputBuf               string                 // 入力バッファ
+	searchQuery            string                 // 現在の検索クエリ
+	searchFwd              bool                   // 検索方向（trueなら前方）
+	gui                    *gocui.Gui             // gocuiインスタンスへの参照
+	pendingTargets         []string               // 削除確認時のターゲットパスのスナップショット
+	inputKeybindingsInited bool                   // 入力ビューのキーバインド登録済みフラグ
 }
 
 // NewApp は新しいAppを作成する。
@@ -149,7 +151,7 @@ func (a *App) Layout(g *gocui.Gui) error {
 	}
 
 	// 入力モード時は入力ビューを表示
-	if a.inputMode != InputModeNone && a.isTextInputMode() {
+	if a.isTextInputMode() {
 		if v, err := g.SetView(viewInput, 0, maxY-2, maxX-1, maxY); err != nil {
 			if err != gocui.ErrUnknownView {
 				return err
@@ -278,7 +280,7 @@ func (a *App) isTextInputMode() bool {
 // renderStatus はステータスバーを描画する。
 func (a *App) renderStatus(g *gocui.Gui) error {
 	// テキスト入力モード時は入力ビューに描画
-	if a.inputMode != InputModeNone && a.isTextInputMode() {
+	if a.isTextInputMode() {
 		v, err := g.View(viewInput)
 		if err != nil {
 			return nil // 入力ビューがまだ作られていない場合はスキップ

@@ -62,8 +62,22 @@ func (p *Pane) Refresh() error {
 		filtered = append(filtered, e)
 	}
 
+	// 選択中のエントリ名を保持
+	selectedNames := make(map[string]bool)
+	for i, e := range p.Entries {
+		if p.Selected[i] {
+			selectedNames[e.Name] = true
+		}
+	}
+
 	p.Entries = filtered
+	// 選択状態を復元
 	p.Selected = make(map[int]bool)
+	for i, e := range p.Entries {
+		if selectedNames[e.Name] {
+			p.Selected[i] = true
+		}
+	}
 	p.clampCursor()
 	return nil
 }
