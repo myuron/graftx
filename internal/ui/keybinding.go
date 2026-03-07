@@ -66,6 +66,9 @@ func (a *App) setKeybindings(g *gocui.Gui) error {
 	if err := a.bindPaneKey(g, gocui.KeyEsc, gocui.ModNone, a.handleEsc); err != nil {
 		return err
 	}
+	if err := a.bindPaneKey(g, gocui.KeyCtrlC, gocui.ModNone, a.handleEsc); err != nil {
+		return err
+	}
 	if err := a.bindPaneKey(g, 'y', gocui.ModNone, a.yank); err != nil {
 		return err
 	}
@@ -250,7 +253,7 @@ func (a *App) selectAll(g *gocui.Gui, v *gocui.View) error {
 		return nil
 	}
 	p.SelectAll()
-	a.Status = fmt.Sprintf("%d件選択", len(p.Selected))
+	a.Status = fmt.Sprintf("%d selected", len(p.Selected))
 	return nil
 }
 
@@ -262,7 +265,7 @@ func (a *App) invertSelection(g *gocui.Gui, v *gocui.View) error {
 		return nil
 	}
 	p.InvertSelection()
-	a.Status = fmt.Sprintf("%d件選択", len(p.Selected))
+	a.Status = fmt.Sprintf("%d selected", len(p.Selected))
 	return nil
 }
 
@@ -279,13 +282,13 @@ func (a *App) handleEsc(g *gocui.Gui, v *gocui.View) error {
 			a.Status = fmt.Sprintf("refresh error: %v", err)
 			return nil
 		}
-		a.Status = "フィルタ解除"
+		a.Status = "filter cleared"
 		return nil
 	}
 	// 選択がある場合は選択解除
 	if len(p.Selected) > 0 {
 		p.ClearSelection()
-		a.Status = "選択解除"
+		a.Status = "selection cleared"
 		return nil
 	}
 	a.Status = ""
@@ -417,7 +420,7 @@ func (a *App) trashFile(g *gocui.Gui, v *gocui.View) error {
 
 	a.pendingTargets = a.getTargetPaths(p)
 	a.inputMode = InputModeConfirmDelete
-	a.Status = fmt.Sprintf("ゴミ箱に移動しますか？ (%d件) [y/n]", len(a.pendingTargets))
+	a.Status = fmt.Sprintf("move to trash? (%d item(s)) [y/n]", len(a.pendingTargets))
 	return nil
 }
 
@@ -431,7 +434,7 @@ func (a *App) deleteFile(g *gocui.Gui, v *gocui.View) error {
 
 	a.pendingTargets = a.getTargetPaths(p)
 	a.inputMode = InputModeConfirmForceDelete
-	a.Status = fmt.Sprintf("完全削除しますか？ (%d件) [y/n]", len(a.pendingTargets))
+	a.Status = fmt.Sprintf("permanently delete? (%d item(s)) [y/n]", len(a.pendingTargets))
 	return nil
 }
 
@@ -472,11 +475,11 @@ func (a *App) executeConfirm(g *gocui.Gui) error {
 	}
 
 	if lastErr != nil {
-		a.Status = fmt.Sprintf("%d件処理、エラー: %v", count, lastErr)
+		a.Status = fmt.Sprintf("%d processed, error: %v", count, lastErr)
 	} else if mode == InputModeConfirmDelete {
-		a.Status = fmt.Sprintf("%d件をゴミ箱に移動", count)
+		a.Status = fmt.Sprintf("%d item(s) moved to trash", count)
 	} else {
-		a.Status = fmt.Sprintf("%d件を完全削除", count)
+		a.Status = fmt.Sprintf("%d item(s) permanently deleted", count)
 	}
 	return nil
 }
@@ -490,7 +493,7 @@ func (a *App) createFile(g *gocui.Gui, v *gocui.View) error {
 	}
 	a.inputMode = InputModeCreate
 	a.inputBuf = ""
-	a.Status = "新規作成（末尾/でディレクトリ）: "
+	a.Status = ""
 	// 入力ビューのキーバインドを登録
 	return a.setupInputKeybindings(g)
 }
@@ -504,7 +507,7 @@ func (a *App) renameFile(g *gocui.Gui, v *gocui.View) error {
 	}
 	a.inputMode = InputModeRename
 	a.inputBuf = p.Entries[p.Cursor].Name
-	a.Status = fmt.Sprintf("リネーム: %s", a.inputBuf)
+	a.Status = ""
 	return a.setupInputKeybindings(g)
 }
 
@@ -514,7 +517,7 @@ func (a *App) searchForward(g *gocui.Gui, v *gocui.View) error {
 	a.inputMode = InputModeSearch
 	a.inputBuf = ""
 	a.searchFwd = true
-	a.Status = "/:"
+	a.Status = ""
 	return a.setupInputKeybindings(g)
 }
 
@@ -525,7 +528,7 @@ func (a *App) searchNext(g *gocui.Gui, v *gocui.View) error {
 	if a.inputMode == InputModeConfirmDelete || a.inputMode == InputModeConfirmForceDelete {
 		a.inputMode = InputModeNone
 		a.pendingTargets = nil
-		a.Status = "キャンセル"
+		a.Status = "cancelled"
 		return nil
 	}
 	if a.searchQuery == "" {
@@ -560,7 +563,7 @@ func (a *App) filterMode(g *gocui.Gui, v *gocui.View) error {
 	a.resetGPending()
 	a.inputMode = InputModeFilter
 	a.inputBuf = ""
-	a.Status = "フィルタ: "
+	a.Status = ""
 	return a.setupInputKeybindings(g)
 }
 
@@ -577,9 +580,9 @@ func (a *App) toggleHidden(g *gocui.Gui, v *gocui.View) error {
 		return nil
 	}
 	if p.ShowHidden {
-		a.Status = "隠しファイルを表示"
+		a.Status = "show hidden files"
 	} else {
-		a.Status = "隠しファイルを非表示"
+		a.Status = "hide hidden files"
 	}
 	return nil
 }
@@ -598,11 +601,8 @@ func (a *App) setupInputKeybindings(g *gocui.Gui) error {
 	if err := g.SetKeybinding(viewInput, gocui.KeyEsc, gocui.ModNone, a.inputCancel); err != nil {
 		return err
 	}
-	// Backspace: 1文字削除
-	if err := g.SetKeybinding(viewInput, gocui.KeyBackspace2, gocui.ModNone, a.inputBackspace); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding(viewInput, gocui.KeyBackspace, gocui.ModNone, a.inputBackspace); err != nil {
+	// Ctrl+C: 入力キャンセル（Escの代替）
+	if err := g.SetKeybinding(viewInput, gocui.KeyCtrlC, gocui.ModNone, a.inputCancel); err != nil {
 		return err
 	}
 	return nil
@@ -610,11 +610,7 @@ func (a *App) setupInputKeybindings(g *gocui.Gui) error {
 
 // inputSubmit は入力モードの確定処理を行う。
 func (a *App) inputSubmit(g *gocui.Gui, v *gocui.View) error {
-	// 入力ビューの内容を取得
-	input := strings.TrimSpace(v.Buffer())
-	if input == "" && a.inputBuf != "" {
-		input = a.inputBuf
-	}
+	input := a.inputBuf
 
 	mode := a.inputMode
 	a.inputMode = InputModeNone
@@ -644,14 +640,14 @@ func (a *App) inputSubmit(g *gocui.Gui, v *gocui.View) error {
 				a.Status = fmt.Sprintf("refresh error: %v", err)
 				return nil
 			}
-			a.Status = "フィルタ解除"
+			a.Status = "filter cleared"
 		} else {
 			p.FilterQuery = input
 			if err := p.Refresh(); err != nil {
 				a.Status = fmt.Sprintf("refresh error: %v", err)
 				return nil
 			}
-			a.Status = fmt.Sprintf("フィルタ: %s (%d件)", input, len(p.Entries))
+			a.Status = fmt.Sprintf("filter: %s (%d item(s))", input, len(p.Entries))
 		}
 	case InputModeCreate:
 		return a.executeCreate(input)
@@ -672,17 +668,28 @@ func (a *App) inputCancel(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
-// inputBackspace は入力バッファから1文字削除する。
-func (a *App) inputBackspace(g *gocui.Gui, v *gocui.View) error {
-	// gocuiのEditable viewが自動的にバックスペースを処理するので、
-	// ステータス表示の更新のみ行う
-	return nil
+// inputEditor は入力ビューのカスタムエディタ。
+// ユーザーの入力をinputBufに反映し、Layoutサイクルで消えないようにする。
+func (a *App) inputEditor(v *gocui.View, key gocui.Key, ch rune, mod gocui.Modifier) {
+	switch {
+	case key == gocui.KeyBackspace || key == gocui.KeyBackspace2:
+		if len(a.inputBuf) > 0 {
+			runes := []rune(a.inputBuf)
+			a.inputBuf = string(runes[:len(runes)-1])
+		}
+	case ch != 0 && key == 0:
+		a.inputBuf += string(ch)
+	case key == gocui.KeySpace:
+		a.inputBuf += " "
+	default:
+		return
+	}
 }
 
 // executeCreate は新規ファイル/ディレクトリの作成を実行する。
 func (a *App) executeCreate(name string) error {
 	if name == "" {
-		a.Status = "名前が空です"
+		a.Status = "name is empty"
 		return nil
 	}
 
@@ -699,13 +706,13 @@ func (a *App) executeCreate(name string) error {
 	// パストラバーサル防止: ベース名のみ許可
 	base := filepath.Base(name)
 	if base != name || base == "." || base == ".." {
-		a.Status = "無効なファイル名です"
+		a.Status = "invalid filename"
 		return nil
 	}
 
 	path := filepath.Join(p.Dir, name)
 	if err := a.FS.Create(path, isDir); err != nil {
-		a.Status = fmt.Sprintf("作成エラー: %v", err)
+		a.Status = fmt.Sprintf("create error: %v", err)
 		return nil
 	}
 
@@ -723,9 +730,9 @@ func (a *App) executeCreate(name string) error {
 	}
 
 	if isDir {
-		a.Status = fmt.Sprintf("ディレクトリ作成: %s", name)
+		a.Status = fmt.Sprintf("directory created: %s", name)
 	} else {
-		a.Status = fmt.Sprintf("ファイル作成: %s", name)
+		a.Status = fmt.Sprintf("file created: %s", name)
 	}
 	return nil
 }
@@ -733,7 +740,7 @@ func (a *App) executeCreate(name string) error {
 // executeRename はリネームを実行する。
 func (a *App) executeRename(newName string) error {
 	if newName == "" {
-		a.Status = "名前が空です"
+		a.Status = "name is empty"
 		return nil
 	}
 
@@ -744,21 +751,21 @@ func (a *App) executeRename(newName string) error {
 
 	oldName := p.Entries[p.Cursor].Name
 	if oldName == newName {
-		a.Status = "名前が変更されていません"
+		a.Status = "name not changed"
 		return nil
 	}
 
 	// パストラバーサル防止: ベース名のみ許可
 	base := filepath.Base(newName)
 	if base != newName || base == "." || base == ".." {
-		a.Status = "無効なファイル名です"
+		a.Status = "invalid filename"
 		return nil
 	}
 
 	oldPath := filepath.Join(p.Dir, oldName)
 	newPath := filepath.Join(p.Dir, newName)
 	if err := a.FS.Rename(oldPath, newPath); err != nil {
-		a.Status = fmt.Sprintf("リネームエラー: %v", err)
+		a.Status = fmt.Sprintf("rename error: %v", err)
 		return nil
 	}
 
@@ -775,7 +782,7 @@ func (a *App) executeRename(newName string) error {
 		}
 	}
 
-	a.Status = fmt.Sprintf("リネーム: %s → %s", oldName, newName)
+	a.Status = fmt.Sprintf("renamed: %s -> %s", oldName, newName)
 	return nil
 }
 
@@ -833,5 +840,5 @@ func (a *App) doSearch(p *pane.Pane, forward bool) {
 			return
 		}
 	}
-	a.Status = fmt.Sprintf("見つかりません: %s", a.searchQuery)
+	a.Status = fmt.Sprintf("not found: %s", a.searchQuery)
 }

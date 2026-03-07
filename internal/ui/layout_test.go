@@ -18,6 +18,61 @@ func newTestGui(t *testing.T) *gocui.Gui {
 	return g
 }
 
+func TestHighlightMatch_マッチ部分を黄色背景でハイライト(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		query string
+		want  string
+	}{
+		{
+			name:  "完全一致",
+			input: "foo",
+			query: "foo",
+			want:  "\x1b[30;43mfoo\x1b[0m",
+		},
+		{
+			name:  "部分一致",
+			input: "foobar",
+			query: "bar",
+			want:  "foo\x1b[30;43mbar\x1b[0m",
+		},
+		{
+			name:  "大文字小文字を無視",
+			input: "FooBar",
+			query: "foo",
+			want:  "\x1b[30;43mFoo\x1b[0m" + "Bar",
+		},
+		{
+			name:  "マッチなし",
+			input: "hello",
+			query: "xyz",
+			want:  "hello",
+		},
+		{
+			name:  "空クエリ",
+			input: "hello",
+			query: "",
+			want:  "hello",
+		},
+		{
+			name:  "複数マッチは最初のみ",
+			input: "abcabc",
+			query: "abc",
+			want:  "\x1b[30;43mabc\x1b[0m" + "abc",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := highlightMatch(tt.input, tt.query)
+			if got != tt.want {
+				t.Errorf("highlightMatch(%q, %q) = %q, want %q", tt.input, tt.query, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestHighlight_フォーカスペインのみハイライト_右フォーカス(t *testing.T) {
 	g := newTestGui(t)
 	defer g.Close()
