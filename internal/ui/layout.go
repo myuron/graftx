@@ -3,8 +3,10 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jroimartin/gocui"
+	"github.com/mattn/go-runewidth"
 	"github.com/myuron/graftx/internal/fs"
 	"github.com/myuron/graftx/internal/pane"
 	"github.com/myuron/graftx/internal/selector"
@@ -206,8 +208,21 @@ func (a *App) renderLeftPane(g *gocui.Gui) error {
 
 	if a.SourcePane == nil {
 		v.Title = " Source "
-		fmt.Fprintln(v, "")
-		fmt.Fprintln(v, "  's' キーでリポジトリを選択")
+		w, h := v.Size()
+		msg := "'s' キーでリポジトリを選択"
+		msgWidth := runewidth.StringWidth(msg)
+		padX := 0
+		if w > msgWidth {
+			padX = (w - msgWidth) / 2
+		}
+		padY := 0
+		if h > 1 {
+			padY = h / 2
+		}
+		for i := 0; i < padY; i++ {
+			fmt.Fprintln(v, "")
+		}
+		fmt.Fprintf(v, "%s%s\n", strings.Repeat(" ", padX), msg)
 		return nil
 	}
 
