@@ -312,7 +312,7 @@ func (a *App) yank(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
-// paste はヤンクバッファの内容をもう一方のペインにコピーする。
+// paste はヤンクバッファの内容をフォーカス中のペインにコピーする。
 // 同名ファイルが存在する場合はスキップしてステータスに表示する。
 func (a *App) paste(g *gocui.Gui, v *gocui.View) error {
 	a.resetGPending()
@@ -321,7 +321,7 @@ func (a *App) paste(g *gocui.Gui, v *gocui.View) error {
 		return nil
 	}
 
-	dst := a.oppositePane()
+	dst := a.focusedPane()
 	if dst == nil {
 		a.Status = "ペーストの対象ペインがありません"
 		return nil
@@ -366,7 +366,7 @@ func (a *App) paste(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
-// pasteOverwrite はヤンクバッファの内容をもう一方のペインに上書きコピーする。
+// pasteOverwrite はヤンクバッファの内容をフォーカス中のペインに上書きコピーする。
 func (a *App) pasteOverwrite(g *gocui.Gui, v *gocui.View) error {
 	a.resetGPending()
 	if a.YankBuf == nil || len(a.YankBuf.Entries) == 0 {
@@ -374,7 +374,7 @@ func (a *App) pasteOverwrite(g *gocui.Gui, v *gocui.View) error {
 		return nil
 	}
 
-	dst := a.oppositePane()
+	dst := a.focusedPane()
 	if dst == nil {
 		a.Status = "ペーストの対象ペインがありません"
 		return nil
