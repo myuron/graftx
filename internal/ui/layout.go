@@ -109,8 +109,8 @@ func (a *App) SetGui(g *gocui.Gui) error {
 	a.gui = g
 	g.SetManager(a)
 	g.Highlight = true
-	g.SelBgColor = gocui.ColorGreen
-	g.SelFgColor = gocui.ColorBlack
+	g.SelFgColor = gocui.ColorGreen
+	g.SelBgColor = gocui.ColorDefault
 	g.Cursor = false
 	return a.setKeybindings(g)
 }
