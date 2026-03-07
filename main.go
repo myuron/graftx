@@ -6,7 +6,6 @@ import (
 
 	"github.com/jroimartin/gocui"
 	"github.com/myuron/graftx/internal/fs"
-	"github.com/myuron/graftx/internal/pane"
 	"github.com/myuron/graftx/internal/selector"
 	"github.com/myuron/graftx/internal/ui"
 )
@@ -32,7 +31,11 @@ func main() {
 		}
 
 		app.ExitReason = ui.ExitReasonNone
-		app.SetGui(g)
+		if err := app.SetGui(g); err != nil {
+			g.Close()
+			fmt.Fprintf(os.Stderr, "GUI設定に失敗: %v\n", err)
+			os.Exit(1)
+		}
 
 		err = g.MainLoop()
 		g.Close()
@@ -57,17 +60,8 @@ func main() {
 				continue
 			}
 			// SourcePaneの初期化/ChangeDir
-			if app.SourcePane == nil {
-				srcPane, err := pane.NewPane(result, app.FS)
-				if err != nil {
-					app.Status = fmt.Sprintf("ペイン初期化エラー: %v", err)
-					continue
-				}
-				app.SourcePane = srcPane
-			} else {
-				if err := app.SourcePane.ChangeDir(result); err != nil {
-					app.Status = fmt.Sprintf("ディレクトリ変更エラー: %v", err)
-				}
+			if err := app.SetSourceDir(result); err != nil {
+				app.Status = fmt.Sprintf("ソースディレクトリ設定エラー: %v", err)
 			}
 		default:
 			return

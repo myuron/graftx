@@ -33,7 +33,6 @@ const (
 type App struct {
 	SourcePane *pane.Pane             // 左ペイン（コピー元）、未選択時はnil
 	DestPane   *pane.Pane             // 右ペイン（コピー先）
-	YankBuffer *pane.YankBuffer       // ヤンクバッファ
 	Selector   selector.CommandRunner // リポジトリ選択
 	FS         fs.FileSystem          // ファイルシステム
 	FocusLeft  bool                   // trueなら左ペインにフォーカス
@@ -59,15 +58,28 @@ func NewApp(destDir string, fsys fs.FileSystem, sel selector.CommandRunner) (*Ap
 	}, nil
 }
 
+// SetSourceDir はSourcePaneを指定ディレクトリで初期化または変更する。
+func (a *App) SetSourceDir(dir string) error {
+	if a.SourcePane == nil {
+		srcPane, err := pane.NewPane(dir, a.FS)
+		if err != nil {
+			return err
+		}
+		a.SourcePane = srcPane
+		return nil
+	}
+	return a.SourcePane.ChangeDir(dir)
+}
+
 // SetGui はgocuiのGuiインスタンスを設定し、Manager登録・GUI設定・キーバインド登録を行う。
-func (a *App) SetGui(g *gocui.Gui) {
+func (a *App) SetGui(g *gocui.Gui) error {
 	a.gui = g
 	g.SetManager(a)
 	g.Highlight = true
 	g.SelBgColor = gocui.ColorGreen
 	g.SelFgColor = gocui.ColorBlack
 	g.Cursor = false
-	a.setKeybindings(g)
+	return a.setKeybindings(g)
 }
 
 // Layout はgocui.Managerインターフェースの実装。
@@ -107,9 +119,13 @@ func (a *App) Layout(g *gocui.Gui) error {
 
 	// フォーカス中のビューをcurrentViewに設定
 	if a.FocusLeft {
-		g.SetCurrentView(viewLeft)
+		if _, err := g.SetCurrentView(viewLeft); err != nil {
+			return err
+		}
 	} else {
-		g.SetCurrentView(viewRight)
+		if _, err := g.SetCurrentView(viewRight); err != nil {
+			return err
+		}
 	}
 
 	// 左ペインの描画
@@ -147,8 +163,7 @@ func (a *App) renderLeftPane(g *gocui.Gui) error {
 
 	v.Title = fmt.Sprintf(" %s ", a.SourcePane.Dir)
 	a.renderEntries(v, a.SourcePane)
-	a.syncScroll(v, a.SourcePane)
-	return nil
+	return a.syncScroll(v, a.SourcePane)
 }
 
 // renderRightPane は右ペインの内容を描画する。
@@ -161,8 +176,7 @@ func (a *App) renderRightPane(g *gocui.Gui) error {
 
 	v.Title = fmt.Sprintf(" %s ", a.DestPane.Dir)
 	a.renderEntries(v, a.DestPane)
-	a.syncScroll(v, a.DestPane)
-	return nil
+	return a.syncScroll(v, a.DestPane)
 }
 
 // renderEntries はペインのエントリ一覧をViewに描画する。
@@ -184,10 +198,10 @@ func (a *App) renderEntries(v *gocui.View, p *pane.Pane) {
 }
 
 // syncScroll はViewのカーソル位置とスクロール位置をPaneのカーソルに同期させる。
-func (a *App) syncScroll(v *gocui.View, p *pane.Pane) {
+func (a *App) syncScroll(v *gocui.View, p *pane.Pane) error {
 	_, viewHeight := v.Size()
 	if viewHeight <= 0 {
-		return
+		return nil
 	}
 
 	// スクロールオフセットを計算
@@ -198,8 +212,10 @@ func (a *App) syncScroll(v *gocui.View, p *pane.Pane) {
 		cy = viewHeight - 1
 	}
 
-	v.SetOrigin(0, oy)
-	v.SetCursor(0, cy)
+	if err := v.SetOrigin(0, oy); err != nil {
+		return err
+	}
+	return v.SetCursor(0, cy)
 }
 
 // renderStatus はステータスバーを描画する。

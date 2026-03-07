@@ -7,19 +7,36 @@ import (
 
 // setKeybindings は全キーバインドを登録する。
 // 全キーバインドはグローバル（viewname=""）で登録する。
-func (a *App) setKeybindings(g *gocui.Gui) {
+func (a *App) setKeybindings(g *gocui.Gui) error {
 	// j: カーソル下移動
-	g.SetKeybinding("", 'j', gocui.ModNone, a.cursorDown)
+	if err := g.SetKeybinding("", 'j', gocui.ModNone, a.cursorDown); err != nil {
+		return err
+	}
 	// k: カーソル上移動
-	g.SetKeybinding("", 'k', gocui.ModNone, a.cursorUp)
+	if err := g.SetKeybinding("", 'k', gocui.ModNone, a.cursorUp); err != nil {
+		return err
+	}
 	// l: ディレクトリに入る
-	g.SetKeybinding("", 'l', gocui.ModNone, a.enterDir)
+	if err := g.SetKeybinding("", 'l', gocui.ModNone, a.enterDir); err != nil {
+		return err
+	}
 	// h: 親ディレクトリに戻る
-	g.SetKeybinding("", 'h', gocui.ModNone, a.parentDir)
+	if err := g.SetKeybinding("", 'h', gocui.ModNone, a.parentDir); err != nil {
+		return err
+	}
 	// Tab: フォーカス切替
-	g.SetKeybinding("", gocui.KeyTab, gocui.ModNone, a.toggleFocus)
+	if err := g.SetKeybinding("", gocui.KeyTab, gocui.ModNone, a.toggleFocus); err != nil {
+		return err
+	}
+	// s: リポジトリ選択
+	if err := g.SetKeybinding("", 's', gocui.ModNone, a.selectRepo); err != nil {
+		return err
+	}
 	// q: 終了
-	g.SetKeybinding("", 'q', gocui.ModNone, a.quit)
+	if err := g.SetKeybinding("", 'q', gocui.ModNone, a.quit); err != nil {
+		return err
+	}
+	return nil
 }
 
 // focusedPane はフォーカス中のペインを返す。
@@ -80,6 +97,12 @@ func (a *App) toggleFocus(g *gocui.Gui, v *gocui.View) error {
 	a.FocusLeft = !a.FocusLeft
 	a.Status = ""
 	return nil
+}
+
+// selectRepo はリポジトリ選択のためにMainLoopを一時終了する。
+func (a *App) selectRepo(g *gocui.Gui, v *gocui.View) error {
+	a.ExitReason = ExitReasonSelectRepo
+	return gocui.ErrQuit
 }
 
 // quit はアプリケーションを終了する。
