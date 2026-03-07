@@ -303,6 +303,13 @@ func (a *App) yank(g *gocui.Gui, v *gocui.View) error {
 	if p == nil {
 		return nil
 	}
+	// 同じペインで再度yを押した場合はヤンク取り消し
+	if a.YankBuf != nil && len(a.YankBuf.Entries) > 0 && a.YankBuf.SrcDir == p.Dir {
+		a.YankBuf = nil
+		p.ClearSelection()
+		a.Status = "yank cancelled"
+		return nil
+	}
 	// 選択なしの場合はカーソル行を選択してからヤンク（*マーク表示のため）
 	if len(p.Selected) == 0 && len(p.Entries) > 0 {
 		p.Selected[p.Cursor] = true
@@ -351,8 +358,9 @@ func (a *App) paste(g *gocui.Gui, v *gocui.View) error {
 		return nil
 	}
 
-	// コピー元ペインの選択状態をクリア（*マークを消す）
+	// コピー元ペインの選択状態とヤンクバッファをクリア
 	a.clearYankSourceSelection()
+	a.YankBuf = nil
 
 	if skipped > 0 {
 		a.Status = fmt.Sprintf("%d copied, %d skipped (duplicate)", copied, skipped)
@@ -390,10 +398,12 @@ func (a *App) pasteOverwrite(g *gocui.Gui, v *gocui.View) error {
 		return nil
 	}
 
-	// コピー元ペインの選択状態をクリア（*マークを消す）
+	// コピー元ペインの選択状態とヤンクバッファをクリア
 	a.clearYankSourceSelection()
+	count := len(a.YankBuf.Entries)
+	a.YankBuf = nil
 
-	a.Status = fmt.Sprintf("%d item(s) overwritten", len(a.YankBuf.Entries))
+	a.Status = fmt.Sprintf("%d item(s) overwritten", count)
 	return nil
 }
 
