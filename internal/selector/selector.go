@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+// execCommand はexec.Commandのラッパー。テスト時に差し替え可能にする。
+var execCommand = exec.Command
+
 // CommandRunner はリポジトリ選択コマンドを実行するインターフェース。
 type CommandRunner interface {
 	// SelectRepository はリポジトリ選択UIを表示し、選択されたパスを返す。
@@ -22,7 +25,7 @@ type DefaultRunner struct{}
 // SelectRepository は ghq list --full-path | fzf を実行し、選択されたリポジトリのパスを返す。
 // fzfがキャンセルされた場合は ("", nil) を返す。
 func (r *DefaultRunner) SelectRepository() (string, error) {
-	cmd := exec.Command("bash", "-c", "ghq list --full-path | fzf")
+	cmd := execCommand("bash", "-c", "ghq list --full-path | fzf")
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr
 
@@ -40,7 +43,7 @@ func (r *DefaultRunner) SelectRepository() (string, error) {
 
 // ListRepositories は ghq list --full-path を実行し、リポジトリの一覧を返す。
 func (r *DefaultRunner) ListRepositories() ([]string, error) {
-	cmd := exec.Command("ghq", "list", "--full-path")
+	cmd := execCommand("ghq", "list", "--full-path")
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, err

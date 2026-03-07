@@ -2,6 +2,7 @@ package selector
 
 import (
 	"fmt"
+	"os/exec"
 	"testing"
 )
 
@@ -54,10 +55,22 @@ func TestSelectRepository_エラー(t *testing.T) {
 	}
 }
 
-func TestListRepositories_正常パス(t *testing.T) {
-	repos := []string{"/home/user/repos/project1", "/home/user/repos/project2"}
-	var runner CommandRunner = &mockRunner{repoList: repos}
+// fakeExecCommand はテスト用のexecCommandスタブを作成する。
+// 指定した出力を返すヘルパープロセスとしてテスト自身を再実行する。
+func fakeExecCommand(output string) func(string, ...string) *exec.Cmd {
+	return func(name string, args ...string) *exec.Cmd {
+		cmd := exec.Command("echo", "-n", output)
+		return cmd
+	}
+}
 
+func TestDefaultRunner_ListRepositories_複数リポジトリ(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+
+	execCommand = fakeExecCommand("/home/user/repos/project1\n/home/user/repos/project2")
+
+	runner := &DefaultRunner{}
 	result, err := runner.ListRepositories()
 	if err != nil {
 		t.Fatalf("ListRepositories() error = %v", err)
@@ -68,20 +81,53 @@ func TestListRepositories_正常パス(t *testing.T) {
 	if result[0] != "/home/user/repos/project1" {
 		t.Errorf("ListRepositories()[0] = %q, want %q", result[0], "/home/user/repos/project1")
 	}
-}
-
-func TestListRepositories_エラー(t *testing.T) {
-	var runner CommandRunner = &mockRunner{listErr: fmt.Errorf("command not found")}
-
-	_, err := runner.ListRepositories()
-	if err == nil {
-		t.Fatal("ListRepositories() error = nil, want error")
+	if result[1] != "/home/user/repos/project2" {
+		t.Errorf("ListRepositories()[1] = %q, want %q", result[1], "/home/user/repos/project2")
 	}
 }
 
-func TestListRepositories_空リスト(t *testing.T) {
-	var runner CommandRunner = &mockRunner{repoList: []string{}}
+func TestDefaultRunner_ListRepositories_末尾改行のトリム(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
 
+	execCommand = fakeExecCommand("/home/user/repos/project1\n")
+
+	runner := &DefaultRunner{}
+	result, err := runner.ListRepositories()
+	if err != nil {
+		t.Fatalf("ListRepositories() error = %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("ListRepositories() len = %d, want 1", len(result))
+	}
+	if result[0] != "/home/user/repos/project1" {
+		t.Errorf("ListRepositories()[0] = %q, want %q", result[0], "/home/user/repos/project1")
+	}
+}
+
+func TestDefaultRunner_ListRepositories_空出力(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+
+	execCommand = fakeExecCommand("")
+
+	runner := &DefaultRunner{}
+	result, err := runner.ListRepositories()
+	if err != nil {
+		t.Fatalf("ListRepositories() error = %v", err)
+	}
+	if len(result) != 0 {
+		t.Errorf("ListRepositories() len = %d, want 0", len(result))
+	}
+}
+
+func TestDefaultRunner_ListRepositories_空白のみ(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+
+	execCommand = fakeExecCommand("  \n  \n  ")
+
+	runner := &DefaultRunner{}
 	result, err := runner.ListRepositories()
 	if err != nil {
 		t.Fatalf("ListRepositories() error = %v", err)

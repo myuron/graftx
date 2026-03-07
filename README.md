@@ -6,7 +6,7 @@ A TUI file manager that accelerates file copying between repositories.
 
 With a dual-pane layout displaying Source and Destination side by side, you can quickly perform file operations using only the keyboard with Vim-like keybindings.
 
-```
+```text
 ┌─── Source ──────────┬─── Dest ────────────┐
 │   main.go           │   main.go           │
 │   internal/         │   internal/         │

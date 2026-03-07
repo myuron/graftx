@@ -232,7 +232,9 @@ func (a *App) renderSelectorPopup(g *gocui.Gui) error {
 	}
 
 	// リストビューのカーソル同期
-	a.syncSelectorScroll(listView)
+	if err := a.syncSelectorScroll(listView); err != nil {
+		return err
+	}
 
 	// ビューを前面に表示
 	if _, err := g.SetViewOnTop(viewSelectorFilter); err != nil {
@@ -251,10 +253,10 @@ func (a *App) renderSelectorPopup(g *gocui.Gui) error {
 }
 
 // syncSelectorScroll はセレクタリストビューのスクロール位置を同期する。
-func (a *App) syncSelectorScroll(v *gocui.View) {
+func (a *App) syncSelectorScroll(v *gocui.View) error {
 	_, viewHeight := v.Size()
 	if viewHeight <= 0 {
-		return
+		return nil
 	}
 
 	oy := 0
@@ -264,6 +266,8 @@ func (a *App) syncSelectorScroll(v *gocui.View) {
 		cy = viewHeight - 1
 	}
 
-	_ = v.SetOrigin(0, oy)
-	_ = v.SetCursor(0, cy)
+	if err := v.SetOrigin(0, oy); err != nil {
+		return err
+	}
+	return v.SetCursor(0, cy)
 }
