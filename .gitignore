@@ -1,6 +1,9 @@
 # Direnv
 .direnv/
 
+# MCP
+.serena/
+
 # Editor
 .idea/
 .vscode/
