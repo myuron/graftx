@@ -209,7 +209,7 @@ func (a *App) renderLeftPane(g *gocui.Gui) error {
 	if a.SourcePane == nil {
 		v.Title = " Source "
 		w, h := v.Size()
-		msg := "'s' キーでリポジトリを選択"
+		msg := "[s]select repository"
 		msgWidth := runewidth.StringWidth(msg)
 		padX := 0
 		if w > msgWidth {
