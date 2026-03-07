@@ -6,15 +6,7 @@ A TUI file manager that accelerates file copying between repositories.
 
 With a dual-pane layout displaying Source and Destination side by side, you can quickly perform file operations using only the keyboard with Vim-like keybindings.
 
-```text
-┌─── Source ──────────┬─── Dest ────────────┐
-│   main.go           │   main.go           │
-│   internal/         │   internal/         │
-│ * README.md         │   go.mod            │
-│   go.mod            │                     │
-└─────────────────────┴─────────────────────┘
- [left] [q]Quit [Tab]Switch [h/j/k/l]Move
-```
+https://github.com/user-attachments/assets/4cb2b8a1-3310-4463-a375-02996ce8f257
 
 ## Requirements
 
