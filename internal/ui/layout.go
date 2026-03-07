@@ -269,7 +269,10 @@ func (a *App) renderRightPane(g *gocui.Gui) error {
 
 // renderEntries はペインのエントリ一覧をViewに描画する。
 // 選択済みエントリには "* " プレフィックス、ディレクトリには "/" サフィックスを付与する。
+// 各行はビュー幅いっぱいまでスペースで埋めてハイライトが横幅全体に表示されるようにする。
 func (a *App) renderEntries(v *gocui.View, p *pane.Pane) {
+	viewWidth, _ := v.Size()
+
 	for i, entry := range p.Entries {
 		prefix := "  "
 		if p.Selected[i] {
@@ -281,7 +284,13 @@ func (a *App) renderEntries(v *gocui.View, p *pane.Pane) {
 			suffix = "/"
 		}
 
-		fmt.Fprintf(v, "%s%s%s\n", prefix, entry.Name, suffix)
+		text := prefix + entry.Name + suffix
+		textWidth := runewidth.StringWidth(text)
+		pad := 0
+		if viewWidth > textWidth {
+			pad = viewWidth - textWidth
+		}
+		fmt.Fprintf(v, "%s%s\n", text, strings.Repeat(" ", pad))
 	}
 }
 
