@@ -43,6 +43,7 @@ func (p *Pane) Refresh() error {
 		return err
 	}
 	p.Entries = entries
+	p.Selected = make(map[int]bool)
 	p.clampCursor()
 	return nil
 }

@@ -3,6 +3,7 @@ package fs
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -182,11 +183,25 @@ func TestRemove_ディレクトリ削除(t *testing.T) {
 }
 
 func TestTrash_ゴミ箱移動(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("Trashテストはmacos専用")
+	}
+
 	dir := t.TempDir()
 	path := filepath.Join(dir, "trash_me.txt")
 	if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
 		t.Fatal(err)
 	}
+
+	// ゴミ箱のクリーンアップを先に登録（テスト失敗時も実行される）
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	trashPath := filepath.Join(home, ".Trash", "trash_me.txt")
+	t.Cleanup(func() {
+		os.Remove(trashPath)
+	})
 
 	osFS := &OSFS{}
 	if err := osFS.Trash(path); err != nil {
@@ -199,17 +214,9 @@ func TestTrash_ゴミ箱移動(t *testing.T) {
 	}
 
 	// ゴミ箱にファイルが存在することを検証
-	home, err := os.UserHomeDir()
-	if err != nil {
-		t.Fatal(err)
-	}
-	trashPath := filepath.Join(home, ".Trash", "trash_me.txt")
 	if _, err := os.Stat(trashPath); os.IsNotExist(err) {
 		t.Error("ファイルがゴミ箱に移動されていない")
 	}
-
-	// テスト後のクリーンアップ: ゴミ箱からファイルを削除
-	os.Remove(trashPath)
 }
 
 func TestRename_リネーム(t *testing.T) {

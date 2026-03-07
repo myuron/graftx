@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 )
 
@@ -68,10 +69,13 @@ func (o *OSFS) copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer dstFile.Close()
 
-	_, err = io.Copy(dstFile, srcFile)
-	return err
+	_, copyErr := io.Copy(dstFile, srcFile)
+	closeErr := dstFile.Close()
+	if copyErr != nil {
+		return copyErr
+	}
+	return closeErr
 }
 
 // copyDir はディレクトリを再帰的にコピーする。
@@ -114,7 +118,12 @@ func (o *OSFS) Remove(path string) error {
 }
 
 // Trash はファイル/ディレクトリをmacOSのゴミ箱（~/.Trash）に移動する。
+// macOS専用。他のプラットフォームではエラーを返す。
 func (o *OSFS) Trash(path string) error {
+	if runtime.GOOS != "darwin" {
+		return fmt.Errorf("Trash is only supported on macOS")
+	}
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -125,12 +134,18 @@ func (o *OSFS) Trash(path string) error {
 
 	// 同名ファイルが既にゴミ箱にある場合はサフィックスを付与
 	if _, err := os.Stat(trashPath); err == nil {
-		for i := 1; ; i++ {
+		const maxAttempts = 1000
+		found := false
+		for i := 1; i <= maxAttempts; i++ {
 			candidate := fmt.Sprintf("%s %d", trashPath, i)
 			if _, err := os.Stat(candidate); os.IsNotExist(err) {
 				trashPath = candidate
+				found = true
 				break
 			}
+		}
+		if !found {
+			return fmt.Errorf("ゴミ箱内で一意のパスが見つかりません: %s", name)
 		}
 	}
 
