@@ -276,7 +276,7 @@ func (a *App) handleEsc(g *gocui.Gui, v *gocui.View) error {
 	// フィルタがかかっている場合はフィルタ解除
 	if p.FilterQuery != "" {
 		if err := p.ClearFilter(); err != nil {
-			a.Status = fmt.Sprintf("更新エラー: %v", err)
+			a.Status = fmt.Sprintf("refresh error: %v", err)
 			return nil
 		}
 		a.Status = "フィルタ解除"
@@ -308,7 +308,7 @@ func (a *App) yank(g *gocui.Gui, v *gocui.View) error {
 		p.Selected[p.Cursor] = true
 	}
 	a.YankBuf = p.Yank()
-	a.Status = fmt.Sprintf("%d件ヤンク", len(a.YankBuf.Entries))
+	a.Status = fmt.Sprintf("%d item(s) yanked", len(a.YankBuf.Entries))
 	return nil
 }
 
@@ -317,13 +317,13 @@ func (a *App) yank(g *gocui.Gui, v *gocui.View) error {
 func (a *App) paste(g *gocui.Gui, v *gocui.View) error {
 	a.resetGPending()
 	if a.YankBuf == nil || len(a.YankBuf.Entries) == 0 {
-		a.Status = "ヤンクバッファが空です"
+		a.Status = "yank buffer is empty"
 		return nil
 	}
 
 	dst := a.focusedPane()
 	if dst == nil {
-		a.Status = "ペーストの対象ペインがありません"
+		a.Status = "no target pane for paste"
 		return nil
 	}
 
@@ -340,21 +340,21 @@ func (a *App) paste(g *gocui.Gui, v *gocui.View) error {
 		}
 
 		if err := a.FS.Copy(src, dstPath); err != nil {
-			a.Status = fmt.Sprintf("コピーエラー: %v", err)
+			a.Status = fmt.Sprintf("copy error: %v", err)
 			return nil
 		}
 		copied++
 	}
 
 	if err := dst.Refresh(); err != nil {
-		a.Status = fmt.Sprintf("更新エラー: %v", err)
+		a.Status = fmt.Sprintf("refresh error: %v", err)
 		return nil
 	}
 
 	if skipped > 0 {
-		a.Status = fmt.Sprintf("%d件コピー、%d件スキップ（同名ファイル）", copied, skipped)
+		a.Status = fmt.Sprintf("%d copied, %d skipped (duplicate)", copied, skipped)
 	} else {
-		a.Status = fmt.Sprintf("%d件コピー完了", copied)
+		a.Status = fmt.Sprintf("%d item(s) copied", copied)
 	}
 	return nil
 }
@@ -363,13 +363,13 @@ func (a *App) paste(g *gocui.Gui, v *gocui.View) error {
 func (a *App) pasteOverwrite(g *gocui.Gui, v *gocui.View) error {
 	a.resetGPending()
 	if a.YankBuf == nil || len(a.YankBuf.Entries) == 0 {
-		a.Status = "ヤンクバッファが空です"
+		a.Status = "yank buffer is empty"
 		return nil
 	}
 
 	dst := a.focusedPane()
 	if dst == nil {
-		a.Status = "ペーストの対象ペインがありません"
+		a.Status = "no target pane for paste"
 		return nil
 	}
 
@@ -377,17 +377,17 @@ func (a *App) pasteOverwrite(g *gocui.Gui, v *gocui.View) error {
 		name := filepath.Base(src)
 		dstPath := filepath.Join(dst.Dir, name)
 		if err := a.FS.Copy(src, dstPath); err != nil {
-			a.Status = fmt.Sprintf("コピーエラー: %v", err)
+			a.Status = fmt.Sprintf("copy error: %v", err)
 			return nil
 		}
 	}
 
 	if err := dst.Refresh(); err != nil {
-		a.Status = fmt.Sprintf("更新エラー: %v", err)
+		a.Status = fmt.Sprintf("refresh error: %v", err)
 		return nil
 	}
 
-	a.Status = fmt.Sprintf("%d件上書きコピー完了", len(a.YankBuf.Entries))
+	a.Status = fmt.Sprintf("%d item(s) overwritten", len(a.YankBuf.Entries))
 	return nil
 }
 
@@ -451,7 +451,7 @@ func (a *App) executeConfirm(g *gocui.Gui) error {
 	}
 
 	if err := p.Refresh(); err != nil {
-		a.Status = fmt.Sprintf("更新エラー: %v", err)
+		a.Status = fmt.Sprintf("refresh error: %v", err)
 		return nil
 	}
 
@@ -557,7 +557,7 @@ func (a *App) toggleHidden(g *gocui.Gui, v *gocui.View) error {
 	}
 	p.ShowHidden = !p.ShowHidden
 	if err := p.Refresh(); err != nil {
-		a.Status = fmt.Sprintf("更新エラー: %v", err)
+		a.Status = fmt.Sprintf("refresh error: %v", err)
 		return nil
 	}
 	if p.ShowHidden {
@@ -625,14 +625,14 @@ func (a *App) inputSubmit(g *gocui.Gui, v *gocui.View) error {
 		}
 		if input == "" {
 			if err := p.ClearFilter(); err != nil {
-				a.Status = fmt.Sprintf("更新エラー: %v", err)
+				a.Status = fmt.Sprintf("refresh error: %v", err)
 				return nil
 			}
 			a.Status = "フィルタ解除"
 		} else {
 			p.FilterQuery = input
 			if err := p.Refresh(); err != nil {
-				a.Status = fmt.Sprintf("更新エラー: %v", err)
+				a.Status = fmt.Sprintf("refresh error: %v", err)
 				return nil
 			}
 			a.Status = fmt.Sprintf("フィルタ: %s (%d件)", input, len(p.Entries))
@@ -694,7 +694,7 @@ func (a *App) executeCreate(name string) error {
 	}
 
 	if err := p.Refresh(); err != nil {
-		a.Status = fmt.Sprintf("更新エラー: %v", err)
+		a.Status = fmt.Sprintf("refresh error: %v", err)
 		return nil
 	}
 
@@ -747,7 +747,7 @@ func (a *App) executeRename(newName string) error {
 	}
 
 	if err := p.Refresh(); err != nil {
-		a.Status = fmt.Sprintf("更新エラー: %v", err)
+		a.Status = fmt.Sprintf("refresh error: %v", err)
 		return nil
 	}
 
