@@ -264,6 +264,6 @@ func (a *App) syncSelectorScroll(v *gocui.View) {
 		cy = viewHeight - 1
 	}
 
-	v.SetOrigin(0, oy)
-	v.SetCursor(0, cy)
+	_ = v.SetOrigin(0, oy)
+	_ = v.SetCursor(0, cy)
 }

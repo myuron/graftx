@@ -128,14 +128,6 @@ func (a *App) focusedPane() *pane.Pane {
 	return a.DestPane
 }
 
-// oppositePane はフォーカスしていない方のペインを返す。
-func (a *App) oppositePane() *pane.Pane {
-	if a.FocusLeft {
-		return a.DestPane
-	}
-	return a.SourcePane
-}
-
 // cursorDown はカーソルを1つ下に移動する。
 func (a *App) cursorDown(g *gocui.Gui, v *gocui.View) error {
 	a.resetGPending()
