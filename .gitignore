@@ -1,0 +1,14 @@
+# Direnv
+.direnv/
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Binary
+/graftx
+
+# OS
+.DS_Store

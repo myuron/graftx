@@ -1,0 +1,133 @@
+{
+  "nodes": {
+    "agent-skills": {
+      "inputs": {
+        "home-manager": "home-manager",
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1772640663,
+        "narHash": "sha256-apWnei/2LGgJ247h4WpPQsGooWot4I3CX2PzPsXGx3A=",
+        "owner": "Kyure-A",
+        "repo": "agent-skills-nix",
+        "rev": "0e74b9e4b998807c21ab7ac49d00074aee5df96c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Kyure-A",
+        "repo": "agent-skills-nix",
+        "type": "github"
+      }
+    },
+    "anthropic-skills": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1772827583,
+        "narHash": "sha256-GzNpraXV85qUwyGs5XDe0zHYr2AazqFppWtH9JvO3QE=",
+        "owner": "anthropics",
+        "repo": "skills",
+        "rev": "b0cbd3df1533b396d281a6886d5132f623393a9c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "anthropics",
+        "repo": "skills",
+        "type": "github"
+      }
+    },
+    "flake-utils": {
+      "inputs": {
+        "systems": "systems"
+      },
+      "locked": {
+        "lastModified": 1731533236,
+        "narHash": "sha256-l0KFg5HjrsfsO/JpG+r7fRrqm12kzFHyUHqHCVpMMbI=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "home-manager": {
+      "inputs": {
+        "nixpkgs": [
+          "agent-skills",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1772380461,
+        "narHash": "sha256-O3ukj3Bb3V0Tiy/4LUfLlBpWypJ9P0JeUgsKl2nmZZY=",
+        "owner": "nix-community",
+        "repo": "home-manager",
+        "rev": "f140aa04d7d14f8a50ab27f3691b5766b17ae961",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "home-manager",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1772198003,
+        "narHash": "sha256-I45esRSssFtJ8p/gLHUZ1OUaaTaVLluNkABkk6arQwE=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "dd9b079222d43e1943b6ebd802f04fd959dc8e61",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_2": {
+      "locked": {
+        "lastModified": 1772624091,
+        "narHash": "sha256-QKyJ0QGWBn6r0invrMAK8dmJoBYWoOWy7lN+UHzW1jc=",
+        "rev": "80bdc1e5ce51f56b19791b52b2901187931f5353",
+        "revCount": 958232,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.958232%2Brev-80bdc1e5ce51f56b19791b52b2901187931f5353/019cbcff-0413-7b59-87be-b2cea58a4043/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/NixOS/nixpkgs/0.1"
+      }
+    },
+    "root": {
+      "inputs": {
+        "agent-skills": "agent-skills",
+        "anthropic-skills": "anthropic-skills",
+        "flake-utils": "flake-utils",
+        "nixpkgs": "nixpkgs_2"
+      }
+    },
+    "systems": {
+      "locked": {
+        "lastModified": 1681028828,
+        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
+        "owner": "nix-systems",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "default",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
