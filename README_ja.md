@@ -6,15 +6,7 @@
 
 左右2ペイン構成で、コピー元（Source）とコピー先（Dest）を同時に表示し、Vimライクなキーバインドでキーボードだけで素早くファイル操作を完結できます。
 
-```text
-┌─── Source ──────────┬─── Dest ────────────┐
-│   main.go           │   main.go           │
-│   internal/         │   internal/         │
-│ * README.md         │   go.mod            │
-│   go.mod            │                     │
-└─────────────────────┴─────────────────────┘
- [left] [q]Quit [Tab]Switch [h/j/k/l]Move
-```
+https://github.com/user-attachments/assets/7993019c-90af-4271-9516-04fe093f8738
 
 ## 必要環境
 
