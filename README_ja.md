@@ -19,6 +19,36 @@ https://github.com/user-attachments/assets/7993019c-90af-4271-9516-04fe093f8738
 go install github.com/myuron/graftx@latest
 ```
 
+### Nix Flake
+
+flake の inputs に `graftx` を追加し、パッケージとして利用できます。
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    graftx.url = "github:myuron/graftx";
+  };
+
+  outputs = { nixpkgs, graftx, ... }:
+  let
+    system = "x86_64-linux"; # "aarch64-linux", "x86_64-darwin", "aarch64-darwin" も可
+  in
+  {
+    # NixOS の場合
+    # environment.systemPackages = [ graftx.packages.${system}.default ];
+
+    # home-manager の場合
+    # home.packages = [ graftx.packages.${system}.default ];
+
+    # devShell の場合
+    devShells.${system}.default = nixpkgs.legacyPackages.${system}.mkShell {
+      packages = [ graftx.packages.${system}.default ];
+    };
+  };
+}
+```
+
 ## 起動
 
 ```bash
