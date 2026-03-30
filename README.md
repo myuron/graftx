@@ -19,6 +19,36 @@ https://github.com/user-attachments/assets/7993019c-90af-4271-9516-04fe093f8738
 go install github.com/myuron/graftx@latest
 ```
 
+### Nix Flake
+
+Add `graftx` to your flake inputs and include it in your packages.
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    graftx.url = "github:myuron/graftx";
+  };
+
+  outputs = { nixpkgs, graftx, ... }:
+  let
+    system = "x86_64-linux"; # or "aarch64-linux", "x86_64-darwin", "aarch64-darwin"
+  in
+  {
+    # Example: NixOS configuration
+    # environment.systemPackages = [ graftx.packages.${system}.default ];
+
+    # Example: home-manager
+    # home.packages = [ graftx.packages.${system}.default ];
+
+    # Example: devShell
+    devShells.${system}.default = nixpkgs.legacyPackages.${system}.mkShell {
+      packages = [ graftx.packages.${system}.default ];
+    };
+  };
+}
+```
+
 ## Getting Started
 
 ```bash

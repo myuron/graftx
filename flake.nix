@@ -48,6 +48,14 @@
       };
     in
     {
+      packages.default = pkgs.buildGoModule {
+        pname = "graftx";
+        version = "0.1.0";
+        src = ./.;
+        vendorHash = "sha256-herMHZOw1VTTrIGOhmDnygi2LfRcqDpXEZEX6KsYoWI=";
+        # サンドボックス環境ではホームディレクトリが存在しないためテストをスキップ
+        doCheck = false;
+      };
       apps = {
         skills-install-local = {
           type = "app";
