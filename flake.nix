@@ -68,7 +68,7 @@
           go
           gotools
           golangci-lint
-          gomarkdoc
+
         ];
       };
     }
