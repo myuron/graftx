@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -9,24 +10,40 @@ import (
 	"github.com/myuron/graftx/internal/pane"
 )
 
+// errStub はテスト用のダミーエラー。
+var errStub = errors.New("stub error")
+
 // keyRunes はルーン入力のキーメッセージを生成する。
 func keyRunes(s string) tea.KeyMsg {
 	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)}
 }
 
-// stubFS は削除系テスト用の最小のFileSystem実装。
+// stubFS は削除・コピー系テスト用の最小のFileSystem実装。
 type stubFS struct {
 	entries []fs.Entry
 	trashed []string
 	removed []string
+	copies  [][2]string // [src, dst] の記録
 }
 
 func (s *stubFS) ReadDir(string) ([]fs.Entry, error) { return s.entries, nil }
-func (s *stubFS) Copy(string, string) error          { return nil }
-func (s *stubFS) Remove(p string) error              { s.removed = append(s.removed, p); return nil }
-func (s *stubFS) Trash(p string) error               { s.trashed = append(s.trashed, p); return nil }
-func (s *stubFS) Rename(string, string) error        { return nil }
-func (s *stubFS) Create(string, bool) error          { return nil }
+func (s *stubFS) Copy(src, dst string) error {
+	s.copies = append(s.copies, [2]string{src, dst})
+	return nil
+}
+func (s *stubFS) Remove(p string) error       { s.removed = append(s.removed, p); return nil }
+func (s *stubFS) Trash(p string) error        { s.trashed = append(s.trashed, p); return nil }
+func (s *stubFS) Rename(string, string) error { return nil }
+func (s *stubFS) Create(string, bool) error   { return nil }
+
+// stubRunner はリポジトリ選択テスト用のCommandRunner実装。
+type stubRunner struct {
+	repos []string
+	err   error
+}
+
+func (r *stubRunner) SelectRepository() (string, error)   { return "", nil }
+func (r *stubRunner) ListRepositories() ([]string, error) { return r.repos, r.err }
 
 func newDestApp() *App {
 	app, _ := NewApp("/dst", &stubFS{}, nil)
@@ -173,6 +190,80 @@ func TestUpdate_削除確認_nでキャンセル(t *testing.T) {
 	}
 	if app.Status != "cancelled" {
 		t.Errorf("Status = %q, want \"cancelled\"", app.Status)
+	}
+}
+
+func TestUpdate_後方検索_クエスチョンで方向を保存(t *testing.T) {
+	app := newDestApp()
+	app.DestPane.Cursor = 1 // banana
+
+	// '?' で後方検索モードに入る
+	app.Update(keyRunes("?"))
+	if app.inputMode != InputModeSearchBackward {
+		t.Fatalf("inputMode = %d, want InputModeSearchBackward", app.inputMode)
+	}
+
+	// "apple" を入力して確定 → 後方検索でapple(idx0)にジャンプ
+	for _, ch := range []string{"a", "p", "p", "l", "e"} {
+		app.Update(keyRunes(ch))
+	}
+	app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+
+	if app.searchFwd {
+		t.Error("後方検索確定後はsearchFwdがfalseであるべき")
+	}
+	if app.searchQuery != "apple" {
+		t.Errorf("searchQuery = %q, want \"apple\"", app.searchQuery)
+	}
+	if app.DestPane.Cursor != 0 {
+		t.Errorf("Cursor = %d, want 0 (apple)", app.DestPane.Cursor)
+	}
+}
+
+func TestPasteOverwrite_同一パスへのコピーを防ぐ(t *testing.T) {
+	stub := &stubFS{}
+	app, _ := NewApp("/dst", stub, nil)
+	app.DestPane = &pane.Pane{Dir: "/dst", Entries: []fs.Entry{{Name: "apple"}}, Selected: map[int]bool{}, FS: stub}
+	app.width, app.height = 80, 24
+	// ヤンク元と貼り付け先が同一ディレクトリの同名ファイル
+	app.YankBuf = &pane.YankBuffer{Entries: []string{"/dst/apple"}, SrcDir: "/dst"}
+
+	app.pasteOverwrite()
+
+	if len(stub.copies) != 0 {
+		t.Errorf("同一パスではCopyを呼ばないべき: %v", stub.copies)
+	}
+	if app.Status != "copy error: source and destination are the same" {
+		t.Errorf("Status = %q", app.Status)
+	}
+}
+
+func TestUpdate_sでセレクタを開き非同期で一覧反映(t *testing.T) {
+	app := newDestApp()
+	app.Selector = &stubRunner{repos: []string{"/r/a", "/r/b"}}
+
+	// 's' でセレクタを開く（この時点では一覧はまだ空・ローディング表示）
+	app.Update(keyRunes("s"))
+	if app.inputMode != InputModeSelectRepo {
+		t.Fatalf("inputMode = %d, want InputModeSelectRepo", app.inputMode)
+	}
+	if len(app.repoList) != 0 {
+		t.Errorf("開いた直後はrepoListは空のはず: %v", app.repoList)
+	}
+
+	// 非同期取得結果が届くと一覧へ反映される
+	app.Update(repoListMsg{repos: []string{"/r/a", "/r/b"}})
+	if len(app.filteredRepoList) != 2 {
+		t.Errorf("filteredRepoList len = %d, want 2", len(app.filteredRepoList))
+	}
+}
+
+func TestUpdate_セレクタ取得エラーで閉じる(t *testing.T) {
+	app := newDestApp()
+	app.inputMode = InputModeSelectRepo
+	app.Update(repoListMsg{err: errStub})
+	if app.inputMode != InputModeNone {
+		t.Errorf("エラー時はセレクタを閉じるべき: inputMode = %d", app.inputMode)
 	}
 }
 

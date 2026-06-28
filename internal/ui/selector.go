@@ -67,21 +67,49 @@ func (a *App) handleSelectorKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return a, cmd
 }
 
-// openRepoSelector はリポジトリ選択ポップアップを開く。
-func (a *App) openRepoSelector() tea.Cmd {
-	repos, err := a.Selector.ListRepositories()
-	if err != nil {
-		a.Status = fmt.Sprintf("failed to list repositories: %v", err)
-		return nil
-	}
+// repoListMsg はリポジトリ一覧の非同期取得結果を伝えるメッセージ。
+type repoListMsg struct {
+	repos []string
+	err   error
+}
 
-	a.repoList = repos
+// openRepoSelector はリポジトリ選択ポップアップを開く。
+// リポジトリ一覧の取得はブロッキングを避けるためtea.Cmdで非同期に行う。
+func (a *App) openRepoSelector() tea.Cmd {
+	a.repoList = nil
+	a.filteredRepoList = nil
 	a.repoFilterQuery = ""
 	a.repoSelectorCursor = 0
-	a.filterRepoList()
 	a.inputMode = InputModeSelectRepo
 	a.filterInput.SetValue("")
-	return a.filterInput.Focus()
+	a.Status = "loading repositories..."
+	return tea.Batch(a.filterInput.Focus(), a.fetchRepos())
+}
+
+// fetchRepos はリポジトリ一覧を非同期取得するtea.Cmdを返す。
+func (a *App) fetchRepos() tea.Cmd {
+	sel := a.Selector
+	return func() tea.Msg {
+		repos, err := sel.ListRepositories()
+		return repoListMsg{repos: repos, err: err}
+	}
+}
+
+// handleRepoList はリポジトリ一覧取得結果を処理する。
+func (a *App) handleRepoList(msg repoListMsg) (tea.Model, tea.Cmd) {
+	// 取得完了前にポップアップが閉じられていれば無視する
+	if a.inputMode != InputModeSelectRepo {
+		return a, nil
+	}
+	if msg.err != nil {
+		a.Status = fmt.Sprintf("failed to list repositories: %v", msg.err)
+		a.closeRepoSelector()
+		return a, nil
+	}
+	a.repoList = msg.repos
+	a.filterRepoList()
+	a.Status = ""
+	return a, nil
 }
 
 // closeRepoSelector はリポジトリ選択ポップアップを閉じる。

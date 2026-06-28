@@ -58,6 +58,12 @@ func TestHighlightMatch_マッチ部分を黄色背景でハイライト(t *test
 			query: "abc",
 			want:  "\x1b[30;43mabc\x1b[0m" + "abc",
 		},
+		{
+			name:  "マルチバイト文字を分割しない",
+			input: "あいうえお",
+			query: "いう",
+			want:  "あ" + "\x1b[30;43mいう\x1b[0m" + "えお",
+		},
 	}
 
 	for _, tt := range tests {

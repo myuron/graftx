@@ -18,10 +18,26 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.width = msg.Width
 		a.height = msg.Height
 		return a, nil
+	case repoListMsg:
+		return a.handleRepoList(msg)
 	case tea.KeyMsg:
 		return a.handleKey(msg)
+	default:
+		// カーソル点滅など非キー系メッセージをアクティブな入力欄に流す
+		return a.forwardToInput(msg)
 	}
-	return a, nil
+}
+
+// forwardToInput は現在のモードに応じて非キーメッセージを入力欄へ委譲する。
+func (a *App) forwardToInput(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	switch {
+	case a.inputMode == InputModeSelectRepo:
+		a.filterInput, cmd = a.filterInput.Update(msg)
+	case a.isTextInputMode():
+		a.input, cmd = a.input.Update(msg)
+	}
+	return a, cmd
 }
 
 // handleKey はキー入力を現在のモードに応じてルーティングする。
@@ -83,6 +99,8 @@ func (a *App) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return a, a.renameFile()
 	case "/":
 		return a, a.searchForward()
+	case "?":
+		return a, a.searchBackward()
 	case "n":
 		a.searchNext()
 	case "N":
