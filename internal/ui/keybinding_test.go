@@ -23,9 +23,7 @@ func TestYank_トグルで取り消し(t *testing.T) {
 	}
 
 	// 1回目のy: ヤンクされる
-	if err := app.yank(nil, nil); err != nil {
-		t.Fatal(err)
-	}
+	app.yank()
 	if app.YankBuf == nil || len(app.YankBuf.Entries) == 0 {
 		t.Fatal("1回目のyでYankBufが空")
 	}
@@ -34,9 +32,7 @@ func TestYank_トグルで取り消し(t *testing.T) {
 	}
 
 	// 2回目のy（同じペイン）: ヤンク取り消し
-	if err := app.yank(nil, nil); err != nil {
-		t.Fatal(err)
-	}
+	app.yank()
 	if app.YankBuf != nil && len(app.YankBuf.Entries) > 0 {
 		t.Error("2回目のyでYankBufがクリアされていない")
 	}
@@ -69,18 +65,14 @@ func TestYank_別ペインからは取り消しではなく新規ヤンク(t *te
 	}
 
 	// 左ペインでヤンク
-	if err := app.yank(nil, nil); err != nil {
-		t.Fatal(err)
-	}
+	app.yank()
 	if app.YankBuf == nil || len(app.YankBuf.Entries) != 1 {
 		t.Fatal("左ペインでのヤンクが失敗")
 	}
 
 	// 右ペインに切り替えてy → 取り消しではなく新規ヤンク
 	app.FocusLeft = false
-	if err := app.yank(nil, nil); err != nil {
-		t.Fatal(err)
-	}
+	app.yank()
 	if app.YankBuf == nil || len(app.YankBuf.Entries) == 0 {
 		t.Fatal("別ペインからのyでYankBufが空")
 	}

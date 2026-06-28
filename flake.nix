@@ -52,7 +52,7 @@
         pname = "graftx";
         version = "0.1.0";
         src = ./.;
-        vendorHash = "sha256-herMHZOw1VTTrIGOhmDnygi2LfRcqDpXEZEX6KsYoWI=";
+        vendorHash = "sha256-TUbaUoqDZoQTkcOMtoE/FlAiqkWN+x49JeGkDguh2UU=";
         # サンドボックス環境ではホームディレクトリが存在しないためテストをスキップ
         doCheck = false;
       };

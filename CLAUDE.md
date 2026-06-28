@@ -23,7 +23,7 @@
 Go
 
 ### ライブラリ
-jroimartin/gocui
+charmbracelet/bubbletea（描画: charmbracelet/lipgloss、入力欄: charmbracelet/bubbles の textinput）
 
 ## 規約
 - ソースコード内のコメントは日本語で記述すること。
