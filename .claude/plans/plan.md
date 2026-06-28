@@ -1,20 +1,15 @@
-# Plan: プレビュー機能の追加
+# Plan: キーバインディングヘルパーの追加 (issue #9)
 
 ## 要件
-- フォーカス中ペインの下に、カーソル行ファイルのプレビューを常時表示する。
-  - Source フォーカス時は Source ペインの下、Dest フォーカス時は Dest ペインの下。
-- テキストファイルは内容、ディレクトリは中の一覧を表示。バイナリ／読み込み失敗は不可メッセージ。
+- `?` でキーバインド一覧（ヘルプ）を中央モーダルで表示する。
+- ヘルプ表示中は任意キー/Esc/q で閉じる。
+- 既存の `?`（後方検索）は廃止する。/ の前方検索と n/N の双方向巡回は維持。
 
 ## タスク
-- [x] 1. ブランチ作成（feat/preview-pane）
-- [x] 2. FileSystem に ReadFile を追加（osfs 実装 + テスト用モック更新）
-- [x] 3. 失敗するテストを書く（previewLines / isBinary / render 統合）
-- [x] 4. previewLines・isBinary・renderPreview を実装しテストをパス
-- [x] 5. render() にフォーカス側の縦分割を統合
+- [x] 1. ブランチ作成（feat/keybinding-help）
+- [x] 2. 失敗するテストを書く（? でヘルプ表示 / 任意キーで閉じる / render にヘルプ内容）
+- [x] 3. 後方検索の削除（InputModeSearchBackward, searchBackward, inputPrefix/isTextInputMode）
+- [x] 4. ヘルプ機能の実装（help.go: helpEntries, renderHelpModal, showHelp 状態, ルーティング）
+- [x] 5. ステータスバーに [?]Help を追記 + README 更新
 - [x] 6. gofmt → golangci-lint → go test ./... → nix build
-- [x] 7. PR 作成（#16）
-
-## 追加対応（レビュー反映）
-- [x] 8. プレビュー高さを 50% に変更
-- [x] 9. プレビューをフォーカス可能にしスクロール対応（Tab巡回 + j/k + gg/G）
-- [x] 10. gofmt → golangci-lint → go test ./... → nix build
+- [ ] 7. PR 作成

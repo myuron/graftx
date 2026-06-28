@@ -26,8 +26,6 @@ const (
 	InputModeNone InputMode = iota
 	// InputModeSearch は検索モード（/）。
 	InputModeSearch
-	// InputModeSearchBackward は後方検索モード（?）。
-	InputModeSearchBackward
 	// InputModeFilter はフィルタモード（f）。
 	InputModeFilter
 	// InputModeCreate は新規作成モード（a）。
@@ -63,6 +61,8 @@ type App struct {
 	height         int                    // 端末の高さ
 	input          textinput.Model        // 入力欄（検索/フィルタ/作成/リネーム）
 	pendingTargets []string               // 削除確認時のターゲットパスのスナップショット
+
+	showHelp bool // キーバインドヘルプを表示中か
 
 	previewFocused      bool   // プレビュー領域にフォーカスしているか
 	previewScroll       int    // プレビューのスクロールオフセット（行）
@@ -120,8 +120,6 @@ func (a *App) inputPrefix() string {
 	switch a.inputMode {
 	case InputModeSearch:
 		return "/:"
-	case InputModeSearchBackward:
-		return "?:"
 	case InputModeFilter:
 		return "filter: "
 	case InputModeCreate:
@@ -135,7 +133,7 @@ func (a *App) inputPrefix() string {
 // isTextInputMode はテキスト入力を受け付けるモードかを返す。
 func (a *App) isTextInputMode() bool {
 	switch a.inputMode {
-	case InputModeSearch, InputModeSearchBackward, InputModeFilter, InputModeCreate, InputModeRename:
+	case InputModeSearch, InputModeFilter, InputModeCreate, InputModeRename:
 		return true
 	}
 	return false

@@ -68,6 +68,11 @@ func (a *App) render() string {
 		return ""
 	}
 
+	// ヘルプ表示中は中央モーダルで全画面を占有する
+	if a.showHelp {
+		return lipgloss.Place(a.width, a.height, lipgloss.Center, lipgloss.Center, a.renderHelpModal())
+	}
+
 	// リポジトリ選択ポップアップモードは中央モーダルで全画面を占有する
 	if a.inputMode == InputModeSelectRepo {
 		return lipgloss.Place(a.width, a.height, lipgloss.Center, lipgloss.Center, a.renderSelectorModal())
@@ -262,7 +267,7 @@ func (a *App) renderStatus() string {
 	if a.previewFocused {
 		return fmt.Sprintf(" [%s preview] [q]Quit [Tab]Pane [S-Tab]Pane/Preview [j/k]Scroll", focus)
 	}
-	return fmt.Sprintf(" [%s] [q]Quit [Tab]Pane [S-Tab]Preview [h/j/k/l]Move", focus)
+	return fmt.Sprintf(" [%s] [q]Quit [Tab]Pane [S-Tab]Preview [h/j/k/l]Move [?]Help", focus)
 }
 
 // renderSelectorModal はリポジトリ選択ポップアップのモーダルを描画する。

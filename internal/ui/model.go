@@ -43,6 +43,8 @@ func (a *App) forwardToInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 // handleKey はキー入力を現在のモードに応じてルーティングする。
 func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
+	case a.showHelp:
+		return a.handleHelpKey(msg)
 	case a.inputMode == InputModeSelectRepo:
 		return a.handleSelectorKey(msg)
 	case a.isTextInputMode():
@@ -104,7 +106,7 @@ func (a *App) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "/":
 		return a, a.searchForward()
 	case "?":
-		return a, a.searchBackward()
+		a.toggleHelp()
 	case "n":
 		a.searchNext()
 	case "N":
@@ -142,6 +144,14 @@ func (a *App) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		a.pendingTargets = nil
 		a.Status = "cancelled"
 	}
+	return a, nil
+}
+
+// handleHelpKey はヘルプ表示中のキー入力を処理する。任意キーでヘルプを閉じる。
+func (a *App) handleHelpKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	a.resetGPending()
+	a.showHelp = false
+	a.Status = ""
 	return a, nil
 }
 
