@@ -58,6 +58,32 @@ func TestUpdate_jでカーソル下移動(t *testing.T) {
 	}
 }
 
+func TestUpdate_スペースでマークのみトグルしカーソルは移動しない(t *testing.T) {
+	app := newDestApp()
+	if app.DestPane.Cursor != 0 {
+		t.Fatalf("初期Cursor = %d, want 0", app.DestPane.Cursor)
+	}
+
+	// スペースでカーソル行をトグル選択
+	app.Update(tea.KeyMsg{Type: tea.KeySpace})
+
+	if !app.DestPane.Selected[0] {
+		t.Error("スペースでカーソル行が選択されるべき")
+	}
+	if app.DestPane.Cursor != 0 {
+		t.Errorf("スペース後のCursor = %d, want 0（移動しないべき）", app.DestPane.Cursor)
+	}
+
+	// 再度スペースで選択解除（カーソルは依然移動しない）
+	app.Update(tea.KeyMsg{Type: tea.KeySpace})
+	if app.DestPane.Selected[0] {
+		t.Error("再度のスペースで選択解除されるべき")
+	}
+	if app.DestPane.Cursor != 0 {
+		t.Errorf("2回目スペース後のCursor = %d, want 0", app.DestPane.Cursor)
+	}
+}
+
 func TestUpdate_Tabでフォーカス切替(t *testing.T) {
 	app := newDestApp()
 	if app.FocusLeft {

@@ -123,7 +123,7 @@ func (a *App) moveToBottom() {
 	p.MoveToBottom()
 }
 
-// toggleSelect は選択をトグルしてカーソルを下に移動する。
+// toggleSelect はカーソル行の選択をトグルする。
 func (a *App) toggleSelect() {
 	a.resetGPending()
 	p := a.focusedPane()
@@ -131,7 +131,6 @@ func (a *App) toggleSelect() {
 		return
 	}
 	p.ToggleSelect()
-	p.MoveDown()
 }
 
 // selectAll は全エントリを選択する。
