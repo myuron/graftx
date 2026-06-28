@@ -260,9 +260,9 @@ func (a *App) renderStatus() string {
 		focus = "left"
 	}
 	if a.previewFocused {
-		return fmt.Sprintf(" [%s preview] [q]Quit [Tab]Switch [j/k]Scroll", focus)
+		return fmt.Sprintf(" [%s preview] [q]Quit [Tab]Pane [S-Tab]Pane/Preview [j/k]Scroll", focus)
 	}
-	return fmt.Sprintf(" [%s] [q]Quit [Tab]Switch [h/j/k/l]Move", focus)
+	return fmt.Sprintf(" [%s] [q]Quit [Tab]Pane [S-Tab]Preview [h/j/k/l]Move", focus)
 }
 
 // renderSelectorModal はリポジトリ選択ポップアップのモーダルを描画する。

@@ -108,7 +108,7 @@ func TestUpdate_スペースでマークのみトグルしカーソルは移動�
 	}
 }
 
-func TestUpdate_Tabでフォーカス巡回(t *testing.T) {
+func TestUpdate_Tabで左右ペインを切り替え(t *testing.T) {
 	app := newDestApp()
 	app.SourcePane = &pane.Pane{
 		Dir:      "/src",
@@ -116,18 +116,18 @@ func TestUpdate_Tabでフォーカス巡回(t *testing.T) {
 		Cursor:   0,
 		Selected: map[int]bool{},
 	}
-	if app.FocusLeft || app.previewFocused {
-		t.Fatal("初期状態はDestペインフォーカスのはず")
+	if app.FocusLeft {
+		t.Fatal("初期状態は右（Dest）フォーカスのはず")
 	}
-	// Destペイン → Destプレビュー
+	// Destペイン → Sourceペイン（横移動）
 	app.Update(tea.KeyMsg{Type: tea.KeyTab})
-	if app.FocusLeft || !app.previewFocused {
-		t.Errorf("1回目のTabでDestプレビューになるべき: FocusLeft=%v preview=%v", app.FocusLeft, app.previewFocused)
+	if !app.FocusLeft {
+		t.Errorf("Tabで左ペインになるべき: FocusLeft=%v", app.FocusLeft)
 	}
-	// Destプレビュー → Sourceペイン
+	// Sourceペイン → Destペイン
 	app.Update(tea.KeyMsg{Type: tea.KeyTab})
-	if !app.FocusLeft || app.previewFocused {
-		t.Errorf("2回目のTabでSourceペインになるべき: FocusLeft=%v preview=%v", app.FocusLeft, app.previewFocused)
+	if app.FocusLeft {
+		t.Errorf("Tabで右ペインに戻るべき: FocusLeft=%v", app.FocusLeft)
 	}
 }
 

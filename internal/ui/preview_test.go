@@ -140,72 +140,75 @@ func TestPreviewScroll_可視範囲が総行数以上ならスクロールしな
 	}
 }
 
-func TestToggleFocus_プレビューを含めて巡回する(t *testing.T) {
+func TestToggleFocus_横方向に左右ペインを切り替える(t *testing.T) {
 	a := &App{
 		SourcePane: &pane.Pane{Selected: map[int]bool{}},
 		DestPane:   &pane.Pane{Selected: map[int]bool{}},
 		FocusLeft:  false,
 	}
 
-	// 開始: Destペイン
-	a.toggleFocus() // Destプレビュー
-	if a.FocusLeft || !a.previewFocused {
-		t.Fatalf("Destプレビューに遷移すべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
+	a.toggleFocus() // Dest → Source
+	if !a.FocusLeft {
+		t.Fatalf("横移動で左ペインになるべき: FocusLeft=%v", a.FocusLeft)
 	}
-	a.toggleFocus() // Sourceペイン
-	if !a.FocusLeft || a.previewFocused {
-		t.Fatalf("Sourceペインに遷移すべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
+	a.toggleFocus() // Source → Dest
+	if a.FocusLeft {
+		t.Fatalf("横移動で右ペインに戻るべき: FocusLeft=%v", a.FocusLeft)
 	}
-	a.toggleFocus() // Sourceプレビュー
+
+	// 縦位置（プレビュー）は横移動で維持される
+	a.previewFocused = true
+	a.toggleFocus()
 	if !a.FocusLeft || !a.previewFocused {
-		t.Fatalf("Sourceプレビューに遷移すべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
-	}
-	a.toggleFocus() // Destペイン
-	if a.FocusLeft || a.previewFocused {
-		t.Fatalf("Destペインに戻るべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
+		t.Fatalf("横移動でプレビュー状態を維持すべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
 	}
 }
 
-func TestToggleFocusBack_逆順に巡回する(t *testing.T) {
-	a := &App{
-		SourcePane: &pane.Pane{Selected: map[int]bool{}},
-		DestPane:   &pane.Pane{Selected: map[int]bool{}},
-		FocusLeft:  false,
-	}
-
-	// 開始: Destペイン → Sourceプレビュー
-	a.toggleFocusBack()
-	if !a.FocusLeft || !a.previewFocused {
-		t.Fatalf("Sourceプレビューに遷移すべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
-	}
-	a.toggleFocusBack() // Sourceペイン
-	if !a.FocusLeft || a.previewFocused {
-		t.Fatalf("Sourceペインに遷移すべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
-	}
-	a.toggleFocusBack() // Destプレビュー
-	if a.FocusLeft || !a.previewFocused {
-		t.Fatalf("Destプレビューに遷移すべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
-	}
-	a.toggleFocusBack() // Destペイン
-	if a.FocusLeft || a.previewFocused {
-		t.Fatalf("Destペインに戻るべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
-	}
-}
-
-func TestToggleFocusBack_Source未選択時はDestのみ巡回(t *testing.T) {
+func TestToggleFocus_Source未選択時は横移動しない(t *testing.T) {
 	a := &App{DestPane: &pane.Pane{Selected: map[int]bool{}}, FocusLeft: false}
 
-	a.toggleFocusBack() // Destプレビュー
-	if a.FocusLeft || !a.previewFocused {
-		t.Fatalf("Destプレビューに遷移すべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
-	}
-	a.toggleFocusBack() // Destペイン
-	if a.FocusLeft || a.previewFocused {
-		t.Fatalf("Destペインに戻るべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
+	a.toggleFocus()
+	if a.FocusLeft {
+		t.Fatalf("Source未選択時は左に移動しないべき: FocusLeft=%v", a.FocusLeft)
 	}
 }
 
-func TestUpdate_ShiftTabで逆巡回(t *testing.T) {
+func TestToggleFocusVertical_縦方向にペインとプレビューを切り替える(t *testing.T) {
+	a := &App{DestPane: &pane.Pane{Selected: map[int]bool{}}, FocusLeft: false}
+
+	a.toggleFocusVertical() // ペイン → プレビュー
+	if !a.previewFocused {
+		t.Fatalf("縦移動でプレビューにフォーカスすべき: preview=%v", a.previewFocused)
+	}
+	a.toggleFocusVertical() // プレビュー → ペイン
+	if a.previewFocused {
+		t.Fatalf("縦移動でペインに戻るべき: preview=%v", a.previewFocused)
+	}
+
+	// 左右位置は縦移動で維持される
+	a.FocusLeft = true
+	a.toggleFocusVertical()
+	if !a.FocusLeft || !a.previewFocused {
+		t.Fatalf("縦移動で左右位置を維持すべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
+	}
+}
+
+func TestUpdate_ShiftTabで縦移動(t *testing.T) {
+	app := newDestApp()
+
+	// Destペイン → Destプレビュー
+	app.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	if !app.previewFocused {
+		t.Errorf("Shift+Tabでプレビューにフォーカスするべき: preview=%v", app.previewFocused)
+	}
+	// Destプレビュー → Destペイン
+	app.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	if app.previewFocused {
+		t.Errorf("Shift+Tabでペインに戻るべき: preview=%v", app.previewFocused)
+	}
+}
+
+func TestUpdate_プレビューフォーカス中のTabは横移動して維持(t *testing.T) {
 	app := newDestApp()
 	app.SourcePane = &pane.Pane{
 		Dir:      "/src",
@@ -213,28 +216,16 @@ func TestUpdate_ShiftTabで逆巡回(t *testing.T) {
 		Cursor:   0,
 		Selected: map[int]bool{},
 	}
-	// Destペイン → Sourceプレビュー
+
+	// Destプレビューにフォーカス
 	app.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	if app.FocusLeft || !app.previewFocused {
+		t.Fatalf("Destプレビューになるべき: FocusLeft=%v preview=%v", app.FocusLeft, app.previewFocused)
+	}
+	// Tab で横移動。プレビュー状態は維持されSourceプレビューへ
+	app.Update(tea.KeyMsg{Type: tea.KeyTab})
 	if !app.FocusLeft || !app.previewFocused {
-		t.Errorf("Shift+TabでSourceプレビューになるべき: FocusLeft=%v preview=%v", app.FocusLeft, app.previewFocused)
-	}
-	// プレビューフォーカス中でもShift+Tabで逆巡回できる: Sourceプレビュー → Sourceペイン
-	app.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
-	if !app.FocusLeft || app.previewFocused {
-		t.Errorf("Shift+TabでSourceペインになるべき: FocusLeft=%v preview=%v", app.FocusLeft, app.previewFocused)
-	}
-}
-
-func TestToggleFocus_Source未選択時はDestのみ巡回(t *testing.T) {
-	a := &App{DestPane: &pane.Pane{Selected: map[int]bool{}}, FocusLeft: false}
-
-	a.toggleFocus() // Destプレビュー
-	if a.FocusLeft || !a.previewFocused {
-		t.Fatalf("Destプレビューに遷移すべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
-	}
-	a.toggleFocus() // Destペイン（Sourceはスキップ）
-	if a.FocusLeft || a.previewFocused {
-		t.Fatalf("Destペインに戻るべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
+		t.Errorf("Tabで横移動しプレビューを維持すべき: FocusLeft=%v preview=%v", app.FocusLeft, app.previewFocused)
 	}
 }
 
@@ -259,9 +250,9 @@ func TestUpdate_プレビューフォーカス時にjでスクロールする(t 
 	app.height = 24
 
 	// プレビューにフォーカス（Destペイン → Destプレビュー）
-	app.Update(tea.KeyMsg{Type: tea.KeyTab})
+	app.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
 	if !app.previewFocused {
-		t.Fatal("Tabでプレビューにフォーカスするべき")
+		t.Fatal("Shift+Tabでプレビューにフォーカスするべき")
 	}
 	// 描画で総行数・可視行数を確定させる
 	app.View()

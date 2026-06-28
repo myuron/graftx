@@ -70,7 +70,7 @@ func (a *App) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "tab":
 		a.toggleFocus()
 	case "shift+tab":
-		a.toggleFocusBack()
+		a.toggleFocusVertical()
 	case "s":
 		return a, a.selectRepo()
 	case "q":

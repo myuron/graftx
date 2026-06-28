@@ -77,49 +77,21 @@ func (a *App) parentDir() {
 	}
 }
 
-// toggleFocus はフォーカスを巡回させる。
-// Sourceペイン → Sourceプレビュー → Destペイン → Destプレビュー の順で、
-// SourcePaneが未選択の場合はSource側をスキップする。
+// toggleFocus はペイン間（左右）のフォーカスを切り替える（横移動）。
+// 縦位置（ペイン/プレビュー）は維持する。SourcePaneが未選択の場合は移動しない。
 func (a *App) toggleFocus() {
 	a.resetGPending()
-	switch {
-	case !a.FocusLeft && !a.previewFocused: // Destペイン → Destプレビュー
-		a.previewFocused = true
-	case !a.FocusLeft && a.previewFocused: // Destプレビュー → Sourceペイン（無ければDestペイン）
-		a.previewFocused = false
-		if a.SourcePane != nil {
-			a.FocusLeft = true
-		}
-	case a.FocusLeft && !a.previewFocused: // Sourceペイン → Sourceプレビュー
-		a.previewFocused = true
-	default: // Sourceプレビュー → Destペイン
-		a.FocusLeft = false
-		a.previewFocused = false
+	if a.SourcePane != nil {
+		a.FocusLeft = !a.FocusLeft
 	}
-	a.previewScroll = 0
 	a.Status = ""
 }
 
-// toggleFocusBack はフォーカスをtoggleFocusと逆順に巡回させる。
-// Destプレビュー → Destペイン → Sourceプレビュー → Sourceペイン の順で、
-// SourcePaneが未選択の場合はSource側をスキップする。
-func (a *App) toggleFocusBack() {
+// toggleFocusVertical はペインとプレビュー間（上下）のフォーカスを切り替える（縦移動）。
+// 左右位置は維持する。
+func (a *App) toggleFocusVertical() {
 	a.resetGPending()
-	switch {
-	case !a.FocusLeft && !a.previewFocused: // Destペイン → Sourceプレビュー（無ければDestプレビュー）
-		a.previewFocused = true
-		if a.SourcePane != nil {
-			a.FocusLeft = true
-		}
-	case !a.FocusLeft && a.previewFocused: // Destプレビュー → Destペイン
-		a.previewFocused = false
-	case a.FocusLeft && a.previewFocused: // Sourceプレビュー → Sourceペイン
-		a.previewFocused = false
-	default: // Sourceペイン → Destプレビュー
-		a.FocusLeft = false
-		a.previewFocused = true
-	}
-	a.previewScroll = 0
+	a.previewFocused = !a.previewFocused
 	a.Status = ""
 }
 
@@ -129,7 +101,7 @@ func (a *App) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "tab":
 		a.toggleFocus()
 	case "shift+tab":
-		a.toggleFocusBack()
+		a.toggleFocusVertical()
 	case "j", "down":
 		a.resetGPending()
 		a.previewScrollDown()
