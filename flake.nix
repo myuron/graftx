@@ -50,7 +50,7 @@
     {
       packages.default = pkgs.buildGoModule {
         pname = "graftx";
-        version = "0.1.0";
+        version = "1.2.0";
         src = ./.;
         vendorHash = "sha256-TUbaUoqDZoQTkcOMtoE/FlAiqkWN+x49JeGkDguh2UU=";
         # サンドボックス環境ではホームディレクトリが存在しないためテストをスキップ
