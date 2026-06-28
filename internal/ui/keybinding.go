@@ -269,6 +269,11 @@ func (a *App) pasteOverwrite() {
 	for _, src := range a.YankBuf.Entries {
 		name := filepath.Base(src)
 		dstPath := filepath.Join(dst.Dir, name)
+		// コピー元と同一パスへの上書きはコピー元を破壊しうるため防ぐ
+		if filepath.Clean(src) == filepath.Clean(dstPath) {
+			a.Status = "copy error: source and destination are the same"
+			return
+		}
 		if err := a.FS.Copy(src, dstPath); err != nil {
 			a.Status = fmt.Sprintf("copy error: %v", err)
 			return
@@ -386,6 +391,13 @@ func (a *App) searchForward() tea.Cmd {
 	return a.enterTextInput(InputModeSearch, "")
 }
 
+// searchBackward は後方検索モードに入る。
+func (a *App) searchBackward() tea.Cmd {
+	a.resetGPending()
+	a.searchFwd = false
+	return a.enterTextInput(InputModeSearchBackward, "")
+}
+
 // searchNext は次の検索結果に移動する。
 func (a *App) searchNext() {
 	a.resetGPending()
@@ -449,6 +461,8 @@ func (a *App) inputSubmit() {
 	switch mode {
 	case InputModeSearch, InputModeSearchBackward:
 		a.searchQuery = input
+		// 確定時に検索方向を保存し、後続のn/Nが正しい方向を使えるようにする
+		a.searchFwd = mode == InputModeSearch
 		if input == "" {
 			a.Status = ""
 			return

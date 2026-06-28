@@ -20,18 +20,46 @@ var (
 // highlightMatch は検索クエリにマッチする部分をANSIカラーでハイライトする。
 // 大文字小文字を無視してマッチし、最初のマッチ部分を黄色背景＋黒文字で装飾する。
 // クエリが空またはマッチなしの場合はそのまま返す。
+// マルチバイト文字を分割しないようrune境界で処理する。
 func highlightMatch(name, query string) string {
 	if query == "" {
 		return name
 	}
-	lower := strings.ToLower(name)
-	q := strings.ToLower(query)
-	idx := strings.Index(lower, q)
+	orig := []rune(name)
+	lower := []rune(strings.ToLower(name))
+	q := []rune(strings.ToLower(query))
+	idx := runeSliceIndex(lower, q)
 	if idx < 0 {
 		return name
 	}
+	end := idx + len(q)
+	// ToLowerでrune数が変わる稀なケースに備えて範囲を検証する
+	if end > len(orig) {
+		return name
+	}
 	// 元の文字列の大文字小文字を保持してハイライト
-	return name[:idx] + "\x1b[30;43m" + name[idx:idx+len(query)] + "\x1b[0m" + name[idx+len(query):]
+	return string(orig[:idx]) + "\x1b[30;43m" + string(orig[idx:end]) + "\x1b[0m" + string(orig[end:])
+}
+
+// runeSliceIndex はruneスライスsの中でsubが最初に現れる位置（rune単位）を返す。
+// 見つからなければ-1を返す。
+func runeSliceIndex(s, sub []rune) int {
+	if len(sub) == 0 {
+		return 0
+	}
+	for i := 0; i+len(sub) <= len(s); i++ {
+		match := true
+		for j := range sub {
+			if s[i+j] != sub[j] {
+				match = false
+				break
+			}
+		}
+		if match {
+			return i
+		}
+	}
+	return -1
 }
 
 // render は画面全体を文字列として描画する。
