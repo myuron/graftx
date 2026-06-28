@@ -69,6 +69,8 @@ func (a *App) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		a.parentDir()
 	case "tab":
 		a.toggleFocus()
+	case "shift+tab":
+		a.toggleFocusBack()
 	case "s":
 		return a, a.selectRepo()
 	case "q":

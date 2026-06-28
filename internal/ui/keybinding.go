@@ -100,11 +100,36 @@ func (a *App) toggleFocus() {
 	a.Status = ""
 }
 
+// toggleFocusBack はフォーカスをtoggleFocusと逆順に巡回させる。
+// Destプレビュー → Destペイン → Sourceプレビュー → Sourceペイン の順で、
+// SourcePaneが未選択の場合はSource側をスキップする。
+func (a *App) toggleFocusBack() {
+	a.resetGPending()
+	switch {
+	case !a.FocusLeft && !a.previewFocused: // Destペイン → Sourceプレビュー（無ければDestプレビュー）
+		a.previewFocused = true
+		if a.SourcePane != nil {
+			a.FocusLeft = true
+		}
+	case !a.FocusLeft && a.previewFocused: // Destプレビュー → Destペイン
+		a.previewFocused = false
+	case a.FocusLeft && a.previewFocused: // Sourceプレビュー → Sourceペイン
+		a.previewFocused = false
+	default: // Sourceペイン → Destプレビュー
+		a.FocusLeft = false
+		a.previewFocused = true
+	}
+	a.previewScroll = 0
+	a.Status = ""
+}
+
 // handlePreviewKey はプレビューフォーカス時のキー入力を処理する。
 func (a *App) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "tab":
 		a.toggleFocus()
+	case "shift+tab":
+		a.toggleFocusBack()
 	case "j", "down":
 		a.resetGPending()
 		a.previewScrollDown()

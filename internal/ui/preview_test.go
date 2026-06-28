@@ -166,6 +166,65 @@ func TestToggleFocus_プレビューを含めて巡回する(t *testing.T) {
 	}
 }
 
+func TestToggleFocusBack_逆順に巡回する(t *testing.T) {
+	a := &App{
+		SourcePane: &pane.Pane{Selected: map[int]bool{}},
+		DestPane:   &pane.Pane{Selected: map[int]bool{}},
+		FocusLeft:  false,
+	}
+
+	// 開始: Destペイン → Sourceプレビュー
+	a.toggleFocusBack()
+	if !a.FocusLeft || !a.previewFocused {
+		t.Fatalf("Sourceプレビューに遷移すべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
+	}
+	a.toggleFocusBack() // Sourceペイン
+	if !a.FocusLeft || a.previewFocused {
+		t.Fatalf("Sourceペインに遷移すべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
+	}
+	a.toggleFocusBack() // Destプレビュー
+	if a.FocusLeft || !a.previewFocused {
+		t.Fatalf("Destプレビューに遷移すべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
+	}
+	a.toggleFocusBack() // Destペイン
+	if a.FocusLeft || a.previewFocused {
+		t.Fatalf("Destペインに戻るべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
+	}
+}
+
+func TestToggleFocusBack_Source未選択時はDestのみ巡回(t *testing.T) {
+	a := &App{DestPane: &pane.Pane{Selected: map[int]bool{}}, FocusLeft: false}
+
+	a.toggleFocusBack() // Destプレビュー
+	if a.FocusLeft || !a.previewFocused {
+		t.Fatalf("Destプレビューに遷移すべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
+	}
+	a.toggleFocusBack() // Destペイン
+	if a.FocusLeft || a.previewFocused {
+		t.Fatalf("Destペインに戻るべき: FocusLeft=%v preview=%v", a.FocusLeft, a.previewFocused)
+	}
+}
+
+func TestUpdate_ShiftTabで逆巡回(t *testing.T) {
+	app := newDestApp()
+	app.SourcePane = &pane.Pane{
+		Dir:      "/src",
+		Entries:  []fs.Entry{{Name: "x"}},
+		Cursor:   0,
+		Selected: map[int]bool{},
+	}
+	// Destペイン → Sourceプレビュー
+	app.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	if !app.FocusLeft || !app.previewFocused {
+		t.Errorf("Shift+TabでSourceプレビューになるべき: FocusLeft=%v preview=%v", app.FocusLeft, app.previewFocused)
+	}
+	// プレビューフォーカス中でもShift+Tabで逆巡回できる: Sourceプレビュー → Sourceペイン
+	app.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	if !app.FocusLeft || app.previewFocused {
+		t.Errorf("Shift+TabでSourceペインになるべき: FocusLeft=%v preview=%v", app.FocusLeft, app.previewFocused)
+	}
+}
+
 func TestToggleFocus_Source未選択時はDestのみ巡回(t *testing.T) {
 	a := &App{DestPane: &pane.Pane{Selected: map[int]bool{}}, FocusLeft: false}
 
