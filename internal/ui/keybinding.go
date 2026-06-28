@@ -77,11 +77,61 @@ func (a *App) parentDir() {
 	}
 }
 
-// toggleFocus はペイン間のフォーカスを切り替える。
+// toggleFocus はペイン間（左右）のフォーカスを切り替える（横移動）。
+// 縦位置（ペイン/プレビュー）は維持する。SourcePaneが未選択の場合は移動しない。
 func (a *App) toggleFocus() {
 	a.resetGPending()
-	a.FocusLeft = !a.FocusLeft
+	if a.SourcePane != nil {
+		a.FocusLeft = !a.FocusLeft
+	}
 	a.Status = ""
+}
+
+// toggleFocusVertical はペインとプレビュー間（上下）のフォーカスを切り替える（縦移動）。
+// 左右位置は維持する。
+func (a *App) toggleFocusVertical() {
+	a.resetGPending()
+	a.previewFocused = !a.previewFocused
+	a.Status = ""
+}
+
+// handlePreviewKey はプレビューフォーカス時のキー入力を処理する。
+func (a *App) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "tab":
+		a.toggleFocus()
+	case "shift+tab":
+		a.toggleFocusVertical()
+	case "j", "down":
+		a.resetGPending()
+		a.previewScrollDown()
+	case "k", "up":
+		a.resetGPending()
+		a.previewScrollUp()
+	case "g":
+		a.handlePreviewG()
+	case "G":
+		a.resetGPending()
+		a.previewScroll = a.previewMaxScroll()
+	case "esc":
+		a.resetGPending()
+		a.previewFocused = false
+		a.previewScroll = 0
+		a.Status = ""
+	case "q", "ctrl+c":
+		return a, a.quit()
+	}
+	return a, nil
+}
+
+// handlePreviewG はプレビューフォーカス時の'g'キーを処理する。ggで先頭へ。
+func (a *App) handlePreviewG() {
+	if a.gPending {
+		a.gPending = false
+		a.previewScroll = 0
+		return
+	}
+	a.gPending = true
 }
 
 // selectRepo はリポジトリ選択ポップアップを開く。

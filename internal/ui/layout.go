@@ -64,6 +64,12 @@ type App struct {
 	input          textinput.Model        // 入力欄（検索/フィルタ/作成/リネーム）
 	pendingTargets []string               // 削除確認時のターゲットパスのスナップショット
 
+	previewFocused      bool   // プレビュー領域にフォーカスしているか
+	previewScroll       int    // プレビューのスクロールオフセット（行）
+	previewKey          string // 現在プレビュー中の対象を識別するキー（変化でスクロールリセット）
+	previewTotalLines   int    // 直近の描画で算出したプレビュー総行数
+	previewVisibleLines int    // 直近の描画で算出したプレビュー可視行数
+
 	repoList           []string        // リポジトリ一覧（全件）
 	filteredRepoList   []string        // フィルタ済みリポジトリ一覧
 	repoSelectorCursor int             // リポジトリ選択カーソル位置

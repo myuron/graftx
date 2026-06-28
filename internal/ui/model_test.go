@@ -23,10 +23,17 @@ type stubFS struct {
 	entries []fs.Entry
 	trashed []string
 	removed []string
-	copies  [][2]string // [src, dst] の記録
+	copies  [][2]string       // [src, dst] の記録
+	files   map[string][]byte // パスごとのファイル内容（プレビュー用）
 }
 
 func (s *stubFS) ReadDir(string) ([]fs.Entry, error) { return s.entries, nil }
+func (s *stubFS) ReadFile(p string) ([]byte, error) {
+	if data, ok := s.files[p]; ok {
+		return data, nil
+	}
+	return nil, errStub
+}
 func (s *stubFS) Copy(src, dst string) error {
 	s.copies = append(s.copies, [2]string{src, dst})
 	return nil
@@ -101,14 +108,26 @@ func TestUpdate_スペースでマークのみトグルしカーソルは移動�
 	}
 }
 
-func TestUpdate_Tabでフォーカス切替(t *testing.T) {
+func TestUpdate_Tabで左右ペインを切り替え(t *testing.T) {
 	app := newDestApp()
-	if app.FocusLeft {
-		t.Fatal("初期状態は右フォーカスのはず")
+	app.SourcePane = &pane.Pane{
+		Dir:      "/src",
+		Entries:  []fs.Entry{{Name: "x"}},
+		Cursor:   0,
+		Selected: map[int]bool{},
 	}
+	if app.FocusLeft {
+		t.Fatal("初期状態は右（Dest）フォーカスのはず")
+	}
+	// Destペイン → Sourceペイン（横移動）
 	app.Update(tea.KeyMsg{Type: tea.KeyTab})
 	if !app.FocusLeft {
-		t.Error("Tab後は左フォーカスになるべき")
+		t.Errorf("Tabで左ペインになるべき: FocusLeft=%v", app.FocusLeft)
+	}
+	// Sourceペイン → Destペイン
+	app.Update(tea.KeyMsg{Type: tea.KeyTab})
+	if app.FocusLeft {
+		t.Errorf("Tabで右ペインに戻るべき: FocusLeft=%v", app.FocusLeft)
 	}
 }
 

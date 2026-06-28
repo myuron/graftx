@@ -82,11 +82,67 @@ func (a *App) render() string {
 	leftWidth := a.width / 2
 	rightWidth := a.width - leftWidth
 
-	left := a.renderPane(a.SourcePane, " Source ", a.FocusLeft, leftWidth, paneAreaHeight)
-	right := a.renderPane(a.DestPane, " Dest ", !a.FocusLeft, rightWidth, paneAreaHeight)
+	// プレビュー対象が変わったらスクロール位置をリセットする。
+	a.syncPreviewScroll()
+
+	// フォーカス側はペインとプレビューに縦分割し、非フォーカス側は全高で描画する。
+	paneH, previewH := splitPreviewHeight(paneAreaHeight)
+	// ペインの枠とカーソルはプレビューフォーカス中でないときにアクティブ表示する。
+	paneActive := !a.previewFocused
+
+	var left, right string
+	if a.FocusLeft {
+		pane := a.renderPane(a.SourcePane, " Source ", paneActive, leftWidth, paneH)
+		preview := a.renderPreview(a.SourcePane, leftWidth, previewH, a.previewFocused)
+		left = lipgloss.JoinVertical(lipgloss.Left, pane, preview)
+		right = a.renderPane(a.DestPane, " Dest ", false, rightWidth, paneAreaHeight)
+	} else {
+		left = a.renderPane(a.SourcePane, " Source ", false, leftWidth, paneAreaHeight)
+		pane := a.renderPane(a.DestPane, " Dest ", paneActive, rightWidth, paneH)
+		preview := a.renderPreview(a.DestPane, rightWidth, previewH, a.previewFocused)
+		right = lipgloss.JoinVertical(lipgloss.Left, pane, preview)
+	}
 
 	panes := lipgloss.JoinHorizontal(lipgloss.Top, left, right)
 	return panes + "\n" + a.renderStatus()
+}
+
+// splitPreviewHeight はフォーカス側の利用可能高さをペインとプレビューに配分する。
+// プレビューは全体の約50%を占め、双方が最低3行（枠込み）を確保できるよう調整する。
+func splitPreviewHeight(total int) (paneH, previewH int) {
+	paneH = total / 2
+	previewH = total - paneH
+	if previewH < 3 {
+		previewH = 3
+		paneH = total - previewH
+	}
+	if paneH < 3 {
+		paneH = 3
+		previewH = total - paneH
+		if previewH < 1 {
+			previewH = 1
+		}
+	}
+	return paneH, previewH
+}
+
+// syncPreviewScroll はプレビュー対象（フォーカス中ペインのカーソル行）が
+// 変化した場合にスクロール位置をリセットする。
+func (a *App) syncPreviewScroll() {
+	p := a.focusedPane()
+	key := ""
+	switch {
+	case p == nil:
+		key = "<nil>"
+	case len(p.Entries) == 0:
+		key = p.Dir + "\x00<empty>"
+	default:
+		key = p.Dir + "\x00" + p.Entries[p.Cursor].Name
+	}
+	if key != a.previewKey {
+		a.previewKey = key
+		a.previewScroll = 0
+	}
 }
 
 // renderPane は1つのペインを枠付きで描画する。
@@ -203,7 +259,10 @@ func (a *App) renderStatus() string {
 	if a.FocusLeft {
 		focus = "left"
 	}
-	return fmt.Sprintf(" [%s] [q]Quit [Tab]Switch [h/j/k/l]Move", focus)
+	if a.previewFocused {
+		return fmt.Sprintf(" [%s preview] [q]Quit [Tab]Pane [S-Tab]Pane/Preview [j/k]Scroll", focus)
+	}
+	return fmt.Sprintf(" [%s] [q]Quit [Tab]Pane [S-Tab]Preview [h/j/k/l]Move", focus)
 }
 
 // renderSelectorModal はリポジトリ選択ポップアップのモーダルを描画する。

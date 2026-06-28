@@ -21,6 +21,7 @@ func (m *mockFS) ReadDir(path string) ([]fs.Entry, error) {
 	return entries, nil
 }
 
+func (m *mockFS) ReadFile(path string) ([]byte, error) { return nil, nil }
 func (m *mockFS) Copy(src, dst string) error           { return nil }
 func (m *mockFS) Remove(path string) error             { return nil }
 func (m *mockFS) Trash(path string) error              { return nil }

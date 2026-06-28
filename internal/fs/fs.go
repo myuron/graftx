@@ -14,6 +14,9 @@ type FileSystem interface {
 	// ReadDir はディレクトリのエントリ一覧を返す。
 	// ディレクトリを先、ファイルを後にソートし、それぞれアルファベット順。
 	ReadDir(path string) ([]Entry, error)
+	// ReadFile はファイルの内容を返す。
+	// プレビュー用途のため、実装は読み込むサイズを上限付きで制限してよい。
+	ReadFile(path string) ([]byte, error)
 	// Copy はsrcをdstにコピーする。ディレクトリの場合は再帰的にコピーする。
 	Copy(src, dst string) error
 	// Remove はファイル/ディレクトリを完全削除する。
