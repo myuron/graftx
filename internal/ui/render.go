@@ -82,11 +82,42 @@ func (a *App) render() string {
 	leftWidth := a.width / 2
 	rightWidth := a.width - leftWidth
 
-	left := a.renderPane(a.SourcePane, " Source ", a.FocusLeft, leftWidth, paneAreaHeight)
-	right := a.renderPane(a.DestPane, " Dest ", !a.FocusLeft, rightWidth, paneAreaHeight)
+	// フォーカス側はペインとプレビューに縦分割し、非フォーカス側は全高で描画する。
+	paneH, previewH := splitPreviewHeight(paneAreaHeight)
+
+	var left, right string
+	if a.FocusLeft {
+		pane := a.renderPane(a.SourcePane, " Source ", true, leftWidth, paneH)
+		preview := a.renderPreview(a.SourcePane, leftWidth, previewH)
+		left = lipgloss.JoinVertical(lipgloss.Left, pane, preview)
+		right = a.renderPane(a.DestPane, " Dest ", false, rightWidth, paneAreaHeight)
+	} else {
+		left = a.renderPane(a.SourcePane, " Source ", false, leftWidth, paneAreaHeight)
+		pane := a.renderPane(a.DestPane, " Dest ", true, rightWidth, paneH)
+		preview := a.renderPreview(a.DestPane, rightWidth, previewH)
+		right = lipgloss.JoinVertical(lipgloss.Left, pane, preview)
+	}
 
 	panes := lipgloss.JoinHorizontal(lipgloss.Top, left, right)
 	return panes + "\n" + a.renderStatus()
+}
+
+// splitPreviewHeight はフォーカス側の利用可能高さをペインとプレビューに配分する。
+// プレビューは全体の約1/3を占め、双方が最低3行（枠込み）を確保できるよう調整する。
+func splitPreviewHeight(total int) (paneH, previewH int) {
+	previewH = total / 3
+	if previewH < 3 {
+		previewH = 3
+	}
+	paneH = total - previewH
+	if paneH < 3 {
+		paneH = 3
+		previewH = total - paneH
+		if previewH < 1 {
+			previewH = 1
+		}
+	}
+	return paneH, previewH
 }
 
 // renderPane は1つのペインを枠付きで描画する。

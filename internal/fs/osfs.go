@@ -12,6 +12,22 @@ import (
 // OSFS はFileSystemインターフェースのOS標準実装。
 type OSFS struct{}
 
+// previewReadLimit はReadFileが一度に読み込む最大バイト数。
+// 巨大ファイルのプレビューでメモリを消費しすぎないよう上限を設ける。
+const previewReadLimit = 64 * 1024
+
+// ReadFile はファイルの内容を返す。
+// プレビュー用途のため、先頭から最大previewReadLimitバイトまでを読み込む。
+func (o *OSFS) ReadFile(path string) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+
+	return io.ReadAll(io.LimitReader(f, previewReadLimit))
+}
+
 // ReadDir はディレクトリのエントリ一覧を返す。
 // ディレクトリを先、ファイルを後にソートし、それぞれアルファベット順。
 func (o *OSFS) ReadDir(path string) ([]Entry, error) {

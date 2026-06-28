@@ -23,10 +23,17 @@ type stubFS struct {
 	entries []fs.Entry
 	trashed []string
 	removed []string
-	copies  [][2]string // [src, dst] の記録
+	copies  [][2]string       // [src, dst] の記録
+	files   map[string][]byte // パスごとのファイル内容（プレビュー用）
 }
 
 func (s *stubFS) ReadDir(string) ([]fs.Entry, error) { return s.entries, nil }
+func (s *stubFS) ReadFile(p string) ([]byte, error) {
+	if data, ok := s.files[p]; ok {
+		return data, nil
+	}
+	return nil, errStub
+}
 func (s *stubFS) Copy(src, dst string) error {
 	s.copies = append(s.copies, [2]string{src, dst})
 	return nil
