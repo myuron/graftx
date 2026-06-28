@@ -135,6 +135,7 @@ Keys available in the popup:
 | Key | Action |
 |-----|--------|
 | `.` | Toggle hidden files visibility |
+| `?` | Show keybindings help (press any key / `Esc` to close) |
 | `q` | Quit |
 
 ## Basic Usage

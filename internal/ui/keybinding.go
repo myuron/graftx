@@ -441,11 +441,11 @@ func (a *App) searchForward() tea.Cmd {
 	return a.enterTextInput(InputModeSearch, "")
 }
 
-// searchBackward は後方検索モードに入る。
-func (a *App) searchBackward() tea.Cmd {
+// toggleHelp はキーバインドヘルプの表示/非表示を切り替える。
+func (a *App) toggleHelp() {
 	a.resetGPending()
-	a.searchFwd = false
-	return a.enterTextInput(InputModeSearchBackward, "")
+	a.showHelp = !a.showHelp
+	a.Status = ""
 }
 
 // searchNext は次の検索結果に移動する。
@@ -509,10 +509,10 @@ func (a *App) inputSubmit() {
 	a.input.SetValue("")
 
 	switch mode {
-	case InputModeSearch, InputModeSearchBackward:
+	case InputModeSearch:
 		a.searchQuery = input
-		// 確定時に検索方向を保存し、後続のn/Nが正しい方向を使えるようにする
-		a.searchFwd = mode == InputModeSearch
+		// 確定時に検索方向を前方として保存し、後続のn/Nが正しい方向を使えるようにする
+		a.searchFwd = true
 		if input == "" {
 			a.Status = ""
 			return
@@ -521,7 +521,7 @@ func (a *App) inputSubmit() {
 		if p == nil {
 			return
 		}
-		a.doSearch(p, mode == InputModeSearch)
+		a.doSearch(p, true)
 	case InputModeFilter:
 		p := a.focusedPane()
 		if p == nil {

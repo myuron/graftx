@@ -212,30 +212,50 @@ func TestUpdate_削除確認_nでキャンセル(t *testing.T) {
 	}
 }
 
-func TestUpdate_後方検索_クエスチョンで方向を保存(t *testing.T) {
+func TestUpdate_ヘルプ_クエスチョンで表示(t *testing.T) {
 	app := newDestApp()
-	app.DestPane.Cursor = 1 // banana
 
-	// '?' で後方検索モードに入る
+	// '?' でヘルプを表示する
 	app.Update(keyRunes("?"))
-	if app.inputMode != InputModeSearchBackward {
-		t.Fatalf("inputMode = %d, want InputModeSearchBackward", app.inputMode)
+	if !app.showHelp {
+		t.Fatal("? 押下後はshowHelpがtrueであるべき")
 	}
+}
 
-	// "apple" を入力して確定 → 後方検索でapple(idx0)にジャンプ
-	for _, ch := range []string{"a", "p", "p", "l", "e"} {
-		app.Update(keyRunes(ch))
-	}
-	app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+func TestUpdate_ヘルプ_任意キーで閉じる(t *testing.T) {
+	app := newDestApp()
+	app.showHelp = true
 
-	if app.searchFwd {
-		t.Error("後方検索確定後はsearchFwdがfalseであるべき")
+	// ヘルプ表示中に任意キーで閉じる
+	app.Update(keyRunes("j"))
+	if app.showHelp {
+		t.Error("任意キー押下後はshowHelpがfalseであるべき")
 	}
-	if app.searchQuery != "apple" {
-		t.Errorf("searchQuery = %q, want \"apple\"", app.searchQuery)
-	}
+}
+
+func TestUpdate_ヘルプ表示中はカーソルが動かない(t *testing.T) {
+	app := newDestApp()
+	app.DestPane.Cursor = 0
+	app.showHelp = true
+
+	// ヘルプを閉じるだけでカーソルは移動しない
+	app.Update(keyRunes("j"))
 	if app.DestPane.Cursor != 0 {
-		t.Errorf("Cursor = %d, want 0 (apple)", app.DestPane.Cursor)
+		t.Errorf("Cursor = %d, want 0 (ヘルプを閉じるだけで移動しない)", app.DestPane.Cursor)
+	}
+}
+
+func TestRender_ヘルプ表示時はキー一覧を含む(t *testing.T) {
+	app := newDestApp()
+	app.width, app.height = 80, 24
+	app.showHelp = true
+
+	out := app.render()
+	if !strings.Contains(out, "Keybindings") {
+		t.Errorf("ヘルプにタイトル Keybindings が含まれない:\n%s", out)
+	}
+	if !strings.Contains(out, "Quit") {
+		t.Errorf("ヘルプに q の説明が含まれない:\n%s", out)
 	}
 }
 
