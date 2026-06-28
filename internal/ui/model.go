@@ -49,6 +49,8 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return a.handleInputKey(msg)
 	case a.inputMode == InputModeConfirmDelete || a.inputMode == InputModeConfirmForceDelete:
 		return a.handleConfirmKey(msg)
+	case a.previewFocused:
+		return a.handlePreviewKey(msg)
 	default:
 		return a.handleNormalKey(msg)
 	}

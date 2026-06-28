@@ -12,4 +12,9 @@
 - [x] 4. previewLines・isBinary・renderPreview を実装しテストをパス
 - [x] 5. render() にフォーカス側の縦分割を統合
 - [x] 6. gofmt → golangci-lint → go test ./... → nix build
-- [ ] 7. PR 作成
+- [x] 7. PR 作成（#16）
+
+## 追加対応（レビュー反映）
+- [x] 8. プレビュー高さを 50% に変更
+- [x] 9. プレビューをフォーカス可能にしスクロール対応（Tab巡回 + j/k + gg/G）
+- [x] 10. gofmt → golangci-lint → go test ./... → nix build

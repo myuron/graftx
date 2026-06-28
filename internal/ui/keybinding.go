@@ -77,11 +77,64 @@ func (a *App) parentDir() {
 	}
 }
 
-// toggleFocus はペイン間のフォーカスを切り替える。
+// toggleFocus はフォーカスを巡回させる。
+// Sourceペイン → Sourceプレビュー → Destペイン → Destプレビュー の順で、
+// SourcePaneが未選択の場合はSource側をスキップする。
 func (a *App) toggleFocus() {
 	a.resetGPending()
-	a.FocusLeft = !a.FocusLeft
+	switch {
+	case !a.FocusLeft && !a.previewFocused: // Destペイン → Destプレビュー
+		a.previewFocused = true
+	case !a.FocusLeft && a.previewFocused: // Destプレビュー → Sourceペイン（無ければDestペイン）
+		a.previewFocused = false
+		if a.SourcePane != nil {
+			a.FocusLeft = true
+		}
+	case a.FocusLeft && !a.previewFocused: // Sourceペイン → Sourceプレビュー
+		a.previewFocused = true
+	default: // Sourceプレビュー → Destペイン
+		a.FocusLeft = false
+		a.previewFocused = false
+	}
+	a.previewScroll = 0
 	a.Status = ""
+}
+
+// handlePreviewKey はプレビューフォーカス時のキー入力を処理する。
+func (a *App) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "tab":
+		a.toggleFocus()
+	case "j", "down":
+		a.resetGPending()
+		a.previewScrollDown()
+	case "k", "up":
+		a.resetGPending()
+		a.previewScrollUp()
+	case "g":
+		a.handlePreviewG()
+	case "G":
+		a.resetGPending()
+		a.previewScroll = a.previewMaxScroll()
+	case "esc":
+		a.resetGPending()
+		a.previewFocused = false
+		a.previewScroll = 0
+		a.Status = ""
+	case "q", "ctrl+c":
+		return a, a.quit()
+	}
+	return a, nil
+}
+
+// handlePreviewG はプレビューフォーカス時の'g'キーを処理する。ggで先頭へ。
+func (a *App) handlePreviewG() {
+	if a.gPending {
+		a.gPending = false
+		a.previewScroll = 0
+		return
+	}
+	a.gPending = true
 }
 
 // selectRepo はリポジトリ選択ポップアップを開く。
