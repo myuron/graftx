@@ -31,7 +31,7 @@ ghqでリポジトリを管理しているCLIユーザー。
 ### 技術スタック
 
 - 言語: Go
-- TUIライブラリ: jroimartin/gocui
+- TUIライブラリ: charmbracelet/bubbletea（描画は charmbracelet/lipgloss、入力欄は charmbracelet/bubbles の textinput を利用）
 
 ### 操作コンセプト
 
@@ -58,9 +58,13 @@ graftx — 「接ぎ木（graft）」から。複数のソースから必要な�
 graftx/
 ├── main.go              # エントリポイント
 ├── internal/
-│   ├── ui/              # GUI管理（レイアウト、View生成、キーバインド登録）
-│   │   ├── layout.go
-│   │   └── keybinding.go
+│   ├── ui/              # TUI管理（tea.Model実装、描画、キー処理）
+│   │   ├── layout.go    # App構造体（tea.Model）と状態・共通ロジック
+│   │   ├── model.go     # Init/Update/View とキー入力のルーティング
+│   │   ├── render.go    # lipgloss によるペイン・ステータス・モーダルの描画
+│   │   ├── selector.go  # リポジトリ選択ポップアップ
+│   │   ├── keybinding.go # 各キー操作のハンドラ
+│   │   └── icon.go      # ファイル種別アイコン
 │   ├── pane/            # ペインの状態管理（カーソル位置、選択状態、現在のディレクトリ）
 │   │   └── pane.go
 │   ├── fs/              # ファイルシステム操作（一覧取得、コピー、削除）
@@ -70,7 +74,9 @@ graftx/
 ├── docs/
 │   ├── design.md
 │   └── lib/
-│       └── gocui.md
+│       ├── bubbletea.md
+│       ├── lipgloss.md
+│       └── textinput.md
 └── go.mod
 ```
 
@@ -78,11 +84,11 @@ graftx/
 
 | パッケージ | 責務 |
 |-----------|------|
-| `main` | gocui.Guiの初期化、Managerの登録、MainLoopの起動。MainLoopの再起動ループを管理する |
-| `internal/ui` | gocui.ManagerインターフェースのLayout実装、View生成・配置、キーバインドの登録。`App`構造体を保持し、アプリケーション全体の状態を管理する。gocuiに直接依存する唯一のパッケージ |
-| `internal/pane` | ペインの状態管理。現在のディレクトリパス、エントリ一覧、カーソル位置、選択中ファイル一覧、`YankBuffer`を保持。gocuiに依存しない |
-| `internal/fs` | ファイルシステム操作。`FileSystem`インターフェースの定義と実装。ディレクトリのエントリ一覧取得、ファイル/ディレクトリのコピー、削除を提供。`Entry`構造体もここで定義する。gocuiに依存しない |
-| `internal/selector` | `ghq list | fzf` の実行とリポジトリパスの取得。`CommandRunner`インターフェースの定義と実装。gocuiに依存しない |
+| `main` | `tea.Program` の生成と起動（`tea.WithAltScreen()`）|
+| `internal/ui` | `tea.Model`（`App`構造体）の実装。`Update`でキー入力を処理し、`View`で画面を描画する。アプリケーション全体の状態を保持する。TUIライブラリに直接依存する唯一のパッケージ |
+| `internal/pane` | ペインの状態管理。現在のディレクトリパス、エントリ一覧、カーソル位置、選択中ファイル一覧、`YankBuffer`を保持。TUIライブラリに依存しない |
+| `internal/fs` | ファイルシステム操作。`FileSystem`インターフェースの定義と実装。ディレクトリのエントリ一覧取得、ファイル/ディレクトリのコピー、削除を提供。`Entry`構造体もここで定義する。TUIライブラリに依存しない |
+| `internal/selector` | `ghq list | fzf` の実行とリポジトリパスの取得。`CommandRunner`インターフェースの定義と実装。TUIライブラリに依存しない |
 
 ### コンポーネント間の依存関係
 
@@ -94,66 +100,26 @@ main
       └── selector
 ```
 
-- `main` → `ui`: GUIの初期化と起動を委譲
-- `ui` → `pane`: ペインの状態を参照・更新し、Viewに描画
-- `ui` → `selector`: コピー元リポジトリの選択を委譲
+- `main` → `ui`: TUIの初期化と起動を委譲
+- `ui` → `pane`: ペインの状態を参照・更新し、`View`で描画
+- `ui` → `selector`: コピー元リポジトリ一覧の取得を委譲
 - `pane` → `fs`: ディレクトリ一覧取得やコピー操作を委譲
-- `fs`, `selector`, `pane` は `gocui` に依存しない（テスト容易性の確保）
+- `fs`, `selector`, `pane` はTUIライブラリに依存しない（テスト容易性の確保）
 
-### gocuiとの統合方針
+### Bubble Teaとの統合方針
 
-- `ui` パッケージが `gocui.Manager` インターフェースを実装し、`Layout` メソッドでViewの生成・更新を行う
-- キーバインドのハンドラは `ui` パッケージ内で定義し、`pane` や `selector` のメソッドを呼び出す
-- Viewの更新はgocuiのイベントループ内（Layout関数またはキーバインドコールバック内）でのみ行う
-
-### MainLoopの再起動パターン
-
-gocuiはターミナルを排他的に制御するため、fzfのような対話的な外部プロセスと共存できない。そのため、`main.go`でMainLoopの再起動ループを管理する。
-
-```go
-// main.go の概念的な構造
-func main() {
-    app := ui.NewApp()
-
-    for {
-        g, err := gocui.NewGui(gocui.OutputNormal)
-        if err != nil {
-            log.Fatal(err)
-        }
-
-        app.SetGui(g) // Layout・キーバインドを登録
-
-        if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
-            log.Fatal(err)
-        }
-        g.Close()
-
-        // MainLoop終了理由の判別
-        switch app.ExitReason {
-        case ui.ExitReasonQuit:
-            return // アプリケーション終了
-        case ui.ExitReasonSelectRepo:
-            // fzfを起動してリポジトリ選択
-            repoPath, err := app.Selector.SelectRepository()
-            if err == nil && repoPath != "" {
-                app.SourcePane.ChangeDir(repoPath)
-            }
-            app.ExitReason = ui.ExitReasonNone
-            // ループ先頭に戻り、gocuiを再初期化
-        }
-    }
-}
-```
-
-- `App.ExitReason` フィールドでMainLoop終了理由を判別する（`q`キーによる終了 vs `s`キーによるfzf起動）
-- gocui再初期化時、`App`構造体がループをまたいで生存するため、ペインの状態（ディレクトリ、カーソル位置、選択状態）は自動的に復元される
-- `Layout`関数が`App`構造体の状態に基づいてViewを再描画するため、追加の復元処理は不要
+- `ui` パッケージの `App` 構造体が `tea.Model` インターフェース（`Init`/`Update`/`View`）を実装する
+- `Update` はメッセージ（`tea.KeyMsg`・`tea.WindowSizeMsg`）を受け取り、現在のモード（通常／テキスト入力／確認／リポジトリ選択）に応じてキー入力をルーティングする
+- 各キー操作のハンドラは `App` の状態と `pane`・`selector` を更新する。副作用が必要な場合は `tea.Cmd` を返す
+- `View` は `App` の状態から画面文字列を生成する（純粋関数的）。lipgloss で左右ペイン・ステータスバー・リポジトリ選択モーダルを描画する
+- リポジトリ選択は `s` キーでアプリ内のモーダル（`InputModeSelectRepo`）として表示する。`Selector.ListRepositories()` で取得した一覧を bubbles の textinput でフィルタし、Enter で確定する（外部プロセスでターミナルを奪わないため、イベントループの再起動は不要）
+- 端末サイズは `tea.WindowSizeMsg` で受け取り `App.width`/`App.height` に保持する
 
 ### エラーハンドリング方針
 
 - 画面下部にステータスバー用のViewを設け、エラーメッセージをユーザーに表示する
 - ファイル操作のエラー（権限不足、ディスク容量不足等）はステータスバーに表示し、操作を中断する
-- 致命的エラー（gocui初期化失敗等）はプログラムを終了し、標準エラー出力にメッセージを出力する
+- 致命的エラー（`tea.Program` の起動失敗等）はプログラムを終了し、標準エラー出力にメッセージを出力する
 
 ### テスト方針
 
@@ -162,7 +128,7 @@ func main() {
 | `internal/pane` | カーソル移動、選択状態管理、ディレクトリ遷移 | ユニットテスト。fsパッケージをインターフェースで注入しモック可能にする |
 | `internal/fs` | ディレクトリ一覧取得、コピー、削除 | ユニットテスト。一時ディレクトリを使用 |
 | `internal/selector` | ghq + fzf の呼び出しとパス解析 | ユニットテスト。コマンド実行をインターフェースで注入しモック可能にする |
-| `internal/ui` | gocuiに直接依存するため | テスト対象外（ロジックは他パッケージに委譲済み） |
+| `internal/ui` | キー入力のルーティング、状態遷移、`View`描画 | ユニットテスト。`Update`を直接呼び出して状態を検証し、`View`の出力文字列をアサートする（実端末不要） |
 
 ## 3. UIレイアウト
 
@@ -218,20 +184,19 @@ func main() {
 
 ### カーソル・選択のハイライト
 
-- カーソル行: gocuiの `Highlight` 機能で背景色を反転して表示
+- カーソル行: フォーカス中のペインで lipgloss の背景色（シアン）／前景色（黒）を適用して反転表示する
 - 選択済みファイル: 行頭に `*` マークを表示
 
 ### フォーカス中ペインの視覚的区別
 
-- フォーカス中のペインはgocuiの `SelBgColor` / `SelFgColor` で枠線の色を変更する
-- フォーカスしていないペインは通常の枠線色
+- フォーカス中のペインは lipgloss の枠線色（緑）で強調する
+- フォーカスしていないペインはグレーの枠線色
 
 ### ウィンドウリサイズ時の挙動
 
-- Layout関数で毎回 `g.Size()` を取得し、ペイン幅を再計算する
-- 左ペイン: `x0=0, x1=maxX/2-1`
-- 右ペイン: `x0=maxX/2, x1=maxX-1`
-- ステータスバー: `x0=0, x1=maxX-1, y0=maxY-2, y1=maxY`
+- `tea.WindowSizeMsg` で受け取った幅・高さを保持し、`View` でペイン幅を再計算する
+- 左ペイン幅: `width/2`、右ペイン幅: `width - width/2`
+- ステータスバー: 最下段の1行
 
 ## 4. キーバインド仕様
 
@@ -359,12 +324,11 @@ func main() {
 `s`キーでコピー元リポジトリを選択する。
 
 **動作フロー:**
-1. gocuiのMainLoopを一時停止する（`gocui.ErrQuit`を返して一旦終了）
-2. `ghq list --full-path | fzf` を外部プロセスとして実行し、ターミナルの制御を渡す
-3. ユーザーがfzfでリポジトリを選択すると、選択されたパスを取得
-4. gocuiを再初期化してMainLoopを再開
-5. 左ペインに選択されたリポジトリのルートディレクトリを表示
-6. ユーザーがfzfをキャンセルした場合（Esc/Ctrl+C）は、元の状態に戻る
+1. `s`キーで `Selector.ListRepositories()`（`ghq list --full-path`）を実行し、リポジトリ一覧を取得する
+2. アプリ内に中央モーダル（`InputModeSelectRepo`）を表示する
+3. bubbles の textinput でインクリメンタルにフィルタし、`Ctrl+j/k`（または `Ctrl+n/p`）でカーソルを移動する
+4. Enter で確定すると、選択されたリポジトリのルートディレクトリを左ペインに表示する
+5. Esc/Ctrl+C でキャンセルした場合は、元の状態に戻る
 
 ### 5.5 複数ファイル選択とコピー
 
@@ -471,25 +435,26 @@ YankBuffer (internal/pane)
 type ExitReason int
 
 const (
-    ExitReasonNone       ExitReason = iota
-    ExitReasonQuit                          // qキーによる終了
-    ExitReasonSelectRepo                    // sキーによるリポジトリ選択
+    ExitReasonNone ExitReason = iota
+    ExitReasonQuit            // qキーによる終了
 )
 
+// App は tea.Model を実装する。リポジトリ選択はアプリ内モーダル（InputModeSelectRepo）で行う。
 type App struct {
-    SourcePane *pane.Pane            // 左ペイン（コピー元）
-    DestPane   *pane.Pane            // 右ペイン（コピー先）
-    YankBuffer *pane.YankBuffer      // ヤンクバッファ
+    SourcePane *pane.Pane             // 左ペイン（コピー元）
+    DestPane   *pane.Pane             // 右ペイン（コピー先）
+    YankBuf    *pane.YankBuffer       // ヤンクバッファ
     Selector   selector.CommandRunner // リポジトリ選択
-    FocusLeft  bool                  // true: 左ペインにフォーカス, false: 右ペイン
-    Status     string                // ステータスバーに表示するメッセージ
-    ExitReason ExitReason            // MainLoop終了理由
+    FocusLeft  bool                   // true: 左ペインにフォーカス, false: 右ペイン
+    Status     string                 // ステータスバーに表示するメッセージ
+    ExitReason ExitReason             // 終了理由
+    // ほかに入力モード・検索クエリ・端末サイズ・textinput等の内部状態を保持する
 }
 ```
 
 ### Pane（`internal/pane` パッケージ）
 
-各ペインの状態を管理する構造体。gocuiに依存しない。
+各ペインの状態を管理する構造体。TUIライブラリに依存しない。
 
 ```go
 type Pane struct {
